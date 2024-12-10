@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/youchann/nand2tetris/06/code"
 	"github.com/youchann/nand2tetris/06/parser"
+	"github.com/youchann/nand2tetris/06/symboltable"
 )
 
 func getHackFilePath(asmPath string) string {
@@ -18,20 +20,42 @@ func getHackFilePath(asmPath string) string {
 	return filepath.Join(dir, hackName)
 }
 
-func assemble(content string) ([]string, error) {
+func firstPassAssemble(content string) *symboltable.Table {
+	st := symboltable.New()
+	p := parser.New(content)
+	romAddress := 0
+	for p.HasMoreLines() {
+		switch p.CommandType() {
+		case parser.A_INSTRUCTION, parser.C_INSTRUCTION:
+			romAddress++
+		case parser.L_INSTRUCTION:
+			st.AddEntry(p.Symbol(), romAddress)
+		}
+		p.Advance()
+	}
+	return st
+}
+
+func secondPassAssemble(content string, symbolTable *symboltable.Table) ([]string, error) {
 	var machineCode []string
 	p := parser.New(content)
+	currentRAMAddress := 16
 	for p.HasMoreLines() {
 		var instruction string
 		switch p.CommandType() {
 		case parser.A_INSTRUCTION:
-			instruction = code.Symbol(p.Symbol())
+			s := p.Symbol()
+			if _, err := strconv.Atoi(s); err != nil {
+				if !symbolTable.Contains(s) {
+					symbolTable.AddEntry(s, currentRAMAddress)
+					currentRAMAddress++
+				}
+				s = strconv.Itoa(symbolTable.GetAddress(s))
+			}
+			instruction = code.Symbol(s)
 		case parser.C_INSTRUCTION:
 			instruction = "111" + code.Comp(p.Comp()) + code.Dest(p.Dest()) + code.Jump(p.Jump())
-		case parser.L_INSTRUCTION:
-			// Lコマンドはマシン語を生成しない
-			p.Advance()
-			continue
+		case parser.L_INSTRUCTION: // first pass already handled this
 		}
 		if instruction != "" {
 			machineCode = append(machineCode, instruction)
@@ -77,7 +101,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	machineCode, err := assemble(string(content))
+	st := firstPassAssemble(string(content))
+	machineCode, err := secondPassAssemble(string(content), st)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error assembling code: %v\n", err)
 		os.Exit(1)

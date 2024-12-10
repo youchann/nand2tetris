@@ -82,6 +82,7 @@ func (p *Parser) Jump() string {
 	return ""
 }
 
+// TODO: 構文として正しいかどうかのチェックを加える
 func preprocessCode(input string) []string {
 	lines := strings.Split(input, "\n")
 	return removeSpaces(removeEmptyLines(removeComments(lines)))
