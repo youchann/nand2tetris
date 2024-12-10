@@ -33,7 +33,7 @@ func (p *Parser) Advance() {
 }
 
 func (p *Parser) CommandType() instructionType {
-	commandStr := p.getCurrentCommand()
+	commandStr := p.commandStrList[p.currentIndex]
 	switch commandStr[0] {
 	case '@':
 		return A_INSTRUCTION
@@ -47,7 +47,7 @@ func (p *Parser) CommandType() instructionType {
 }
 
 func (p *Parser) Symbol() string {
-	commandStr := p.getCurrentCommand()
+	commandStr := p.commandStrList[p.currentIndex]
 	switch p.CommandType() {
 	case A_INSTRUCTION:
 		return strings.TrimLeft(commandStr, "@")
@@ -59,7 +59,7 @@ func (p *Parser) Symbol() string {
 }
 
 func (p *Parser) Dest() string {
-	commandStr := p.getCurrentCommand()
+	commandStr := p.commandStrList[p.currentIndex]
 	if strings.Contains(commandStr, "=") {
 		return strings.Split(commandStr, "=")[0]
 	}
@@ -67,7 +67,7 @@ func (p *Parser) Dest() string {
 }
 
 func (p *Parser) Comp() string {
-	commandStr := p.getCurrentCommand()
+	commandStr := p.commandStrList[p.currentIndex]
 	if strings.Contains(commandStr, "=") {
 		return strings.Split(strings.Split(commandStr, "=")[1], ";")[0]
 	}
@@ -75,20 +75,25 @@ func (p *Parser) Comp() string {
 }
 
 func (p *Parser) Jump() string {
-	commandStr := p.getCurrentCommand()
+	commandStr := p.commandStrList[p.currentIndex]
 	if strings.Contains(commandStr, ";") {
 		return strings.Split(commandStr, ";")[1]
 	}
 	return ""
 }
 
-func (p *Parser) getCurrentCommand() string {
-	return strings.TrimSpace(p.commandStrList[p.currentIndex])
-}
-
 func preprocessCode(input string) []string {
 	lines := strings.Split(input, "\n")
-	return removeEmptyLines(removeComments(lines))
+	return removeSpaces(removeEmptyLines(removeComments(lines)))
+}
+
+func removeSpaces(lines []string) []string {
+	var processedLines []string
+	for _, line := range lines {
+		processedLine := strings.ReplaceAll(line, " ", "")
+		processedLines = append(processedLines, processedLine)
+	}
+	return processedLines
 }
 
 func removeEmptyLines(lines []string) []string {
