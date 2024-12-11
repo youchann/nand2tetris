@@ -45,6 +45,7 @@ func (c *CodeWriter) WritePushPop(command token.CommandType, segment token.Segme
 	case token.C_PUSH:
 		c.assembly = append(c.assembly, generatePush(segment, index)...)
 	case token.C_POP:
+		c.assembly = append(c.assembly, generatePop(segment, index)...)
 	default:
 	}
 }
@@ -63,10 +64,11 @@ func (c *CodeWriter) Close() {
 
 func generateInit() []string {
 	var result []string
-	result = append(result, "@256")
-	result = append(result, "D=A")
-	result = append(result, "@SP")
-	result = append(result, "M=D")
+	result = append(result, "@256", "D=A", "@SP", "M=D")    // SP = 256
+	result = append(result, "@300", "D=A", "@LCL", "M=D")   // LCL = 300
+	result = append(result, "@400", "D=A", "@ARG", "M=D")   // ARG = 400
+	result = append(result, "@3000", "D=A", "@THIS", "M=D") // THIS = 3000
+	result = append(result, "@3010", "D=A", "@THAT", "M=D") // THAT = 3010
 	return result
 }
 
@@ -74,6 +76,10 @@ func generatePush(segment token.Segment, index int) []string {
 	switch segment {
 	case token.SEGMENT_CONSTANT:
 		return generatePushConstant(index)
+	case token.SEGMENT_LOCAL, token.SEGMENT_ARGUMENT, token.SEGMENT_THIS, token.SEGMENT_THAT:
+		return generatePushMemoryAccess(segment, index)
+	case token.SEGMENT_POINTER:
+		return generatePushPointer(index)
 	default:
 		return nil
 	}
@@ -81,13 +87,88 @@ func generatePush(segment token.Segment, index int) []string {
 
 func generatePushConstant(index int) []string {
 	var result []string
-	result = append(result, "@"+strconv.Itoa(index))
-	result = append(result, "D=A")
-	result = append(result, "@SP")
-	result = append(result, "A=M")
-	result = append(result, "M=D")
-	result = append(result, "@SP")
-	result = append(result, "M=M+1")
+	result = append(result, "@"+strconv.Itoa(index), "D=A") // D = index
+	result = append(result, "@SP", "A=M", "M=D")            // RAM[SP] = D
+	result = append(result, "@SP", "M=M+1")                 // SP++
+	return result
+}
+
+func generatePushMemoryAccess(segment token.Segment, index int) []string {
+	var result []string
+	var segmentAddr string
+	switch segment {
+	case token.SEGMENT_LOCAL:
+		segmentAddr = "LCL"
+	case token.SEGMENT_ARGUMENT:
+		segmentAddr = "ARG"
+	case token.SEGMENT_THIS:
+		segmentAddr = "THIS"
+	case token.SEGMENT_THAT:
+		segmentAddr = "THAT"
+	}
+	result = append(result, "@"+strconv.Itoa(index), "D=A")  // D = index
+	result = append(result, "@"+segmentAddr, "A=D+M", "D=M") // D = RAM[index + segmentAddr]
+	result = append(result, "@SP", "A=M", "M=D")             // RAM[SP] = D
+	result = append(result, "@SP", "M=M+1")                  // SP++
+	return result
+}
+
+func generatePushPointer(index int) []string {
+	var result []string
+	var pointer string
+	if index == 0 {
+		pointer = "THIS"
+	} else {
+		pointer = "THAT"
+	}
+	result = append(result, "@"+pointer, "D=M")  // D = pointer
+	result = append(result, "@SP", "A=M", "M=D") // RAM[SP] = D
+	result = append(result, "@SP", "M=M+1")      // SP++
+	return result
+}
+
+func generatePop(segment token.Segment, index int) []string {
+	switch segment {
+	case token.SEGMENT_LOCAL, token.SEGMENT_ARGUMENT, token.SEGMENT_THIS, token.SEGMENT_THAT:
+		return generatePopMemoryAccess(segment, index)
+	case token.SEGMENT_POINTER:
+		return generatePopPointer(index)
+	default:
+		return nil
+	}
+}
+
+func generatePopMemoryAccess(segment token.Segment, index int) []string {
+	var result []string
+	var segmentAddr string
+	switch segment {
+	case token.SEGMENT_LOCAL:
+		segmentAddr = "LCL"
+	case token.SEGMENT_ARGUMENT:
+		segmentAddr = "ARG"
+	case token.SEGMENT_THIS:
+		segmentAddr = "THIS"
+	case token.SEGMENT_THAT:
+		segmentAddr = "THAT"
+	}
+	result = append(result, "@"+strconv.Itoa(index), "D=A") // D = index
+	result = append(result, "@"+segmentAddr, "D=D+M")       // D = index + segmentAddr
+	result = append(result, "@R13", "M=D")                  // R13 = D (temporarily store the address to pop)
+	result = append(result, "@SP", "AM=M-1", "D=M")         // move RAM[SP-1] to D
+	result = append(result, "@R13", "A=M", "M=D")           // RAM[R13] = D
+	return result
+}
+
+func generatePopPointer(index int) []string {
+	var result []string
+	var pointer string
+	if index == 0 {
+		pointer = "THIS"
+	} else {
+		pointer = "THAT"
+	}
+	result = append(result, "@SP", "AM=M-1", "D=M") // move RAM[SP-1] to D
+	result = append(result, "@"+pointer, "M=D")     // pointer = D
 	return result
 }
 
