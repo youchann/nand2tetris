@@ -16,7 +16,7 @@ type CodeWriter struct {
 func New(filename string) *CodeWriter {
 	return &CodeWriter{
 		filename: filename,
-		assembly: "",
+		assembly: generateInit() + "\n",
 	}
 }
 
@@ -46,6 +46,15 @@ func (c *CodeWriter) Close() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func generateInit() string {
+	var result []string
+	result = append(result, "@256")
+	result = append(result, "D=A")
+	result = append(result, "@SP")
+	result = append(result, "M=D")
+	return strings.Join(result, "\n")
 }
 
 func generatePush(segment token.Segment, index int) string {
