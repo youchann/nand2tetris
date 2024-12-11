@@ -80,6 +80,10 @@ func generatePush(segment token.Segment, index int) []string {
 		return generatePushMemoryAccess(segment, index)
 	case token.SEGMENT_POINTER:
 		return generatePushPointer(index)
+	case token.SEGMENT_STATIC:
+		return generatePushStatic(index)
+	case token.SEGMENT_TEMP:
+		return generatePushTemp(index)
 	default:
 		return nil
 	}
@@ -127,12 +131,33 @@ func generatePushPointer(index int) []string {
 	return result
 }
 
+func generatePushStatic(index int) []string {
+	var result []string
+	result = append(result, "@STATIC"+strconv.Itoa(index), "D=M") // D = RAM[STATIC + index]
+	result = append(result, "@SP", "A=M", "M=D")                  // RAM[SP] = D
+	result = append(result, "@SP", "M=M+1")                       // SP++
+	return result
+}
+
+func generatePushTemp(index int) []string {
+	var result []string
+	result = append(result, "@R5", "D=A")                            // D = 5
+	result = append(result, "@"+strconv.Itoa(index), "A=D+A", "D=M") // D = RAM[5 + index]
+	result = append(result, "@SP", "A=M", "M=D")                     // RAM[SP] = D
+	result = append(result, "@SP", "M=M+1")                          // SP++
+	return result
+}
+
 func generatePop(segment token.Segment, index int) []string {
 	switch segment {
 	case token.SEGMENT_LOCAL, token.SEGMENT_ARGUMENT, token.SEGMENT_THIS, token.SEGMENT_THAT:
 		return generatePopMemoryAccess(segment, index)
 	case token.SEGMENT_POINTER:
 		return generatePopPointer(index)
+	case token.SEGMENT_STATIC:
+		return generatePopStatic(index)
+	case token.SEGMENT_TEMP:
+		return generatePopTemp(index)
 	default:
 		return nil
 	}
@@ -169,6 +194,23 @@ func generatePopPointer(index int) []string {
 	}
 	result = append(result, "@SP", "AM=M-1", "D=M") // move RAM[SP-1] to D
 	result = append(result, "@"+pointer, "M=D")     // pointer = D
+	return result
+}
+
+func generatePopStatic(index int) []string {
+	var result []string
+	result = append(result, "@SP", "AM=M-1", "D=M") // move RAM[SP-1] to D
+	result = append(result, "@STATIC"+strconv.Itoa(index), "M=D")
+	return result
+}
+
+func generatePopTemp(index int) []string {
+	var result []string
+	result = append(result, "@R5", "D=A")                     // D = 5
+	result = append(result, "@"+strconv.Itoa(index), "D=D+A") // D = 5 + index
+	result = append(result, "@R13", "M=D")                    // R13 = D (temporarily store the address to pop)
+	result = append(result, "@SP", "AM=M-1", "D=M")           // move RAM[SP-1] to D
+	result = append(result, "@R13", "A=M", "M=D")             // RAM[R13] = D
 	return result
 }
 
