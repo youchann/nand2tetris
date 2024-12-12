@@ -63,6 +63,25 @@ func (c *CodeWriter) WriteIf(label string) {
 	c.assembly = append(c.assembly, "@"+label, "D;JNE")     // if D != 0, jump to label
 }
 
+func (c *CodeWriter) WriteFunction(functionName string, numLocals int) {
+	c.assembly = append(c.assembly, "("+functionName+")")
+	for i := 0; i < numLocals; i++ {
+		c.assembly = append(c.assembly, "@SP", "A=M", "M=0", "@SP", "M=M+1")
+	}
+}
+
+func (c *CodeWriter) WriteReturn() {
+	c.assembly = append(c.assembly, "@LCL", "D=M", "@R13", "M=D")                 // R13 = LCL
+	c.assembly = append(c.assembly, "@5", "A=D-A", "D=M", "@R14", "M=D")          // R14 = *(LCL-5)
+	c.assembly = append(c.assembly, "@SP", "AM=M-1", "D=M", "@ARG", "A=M", "M=D") // *ARG = pop()
+	c.assembly = append(c.assembly, "@ARG", "D=M+1", "@SP", "M=D")                // SP = ARG + 1
+	c.assembly = append(c.assembly, "@R13", "AM=M-1", "D=M", "@THAT", "M=D")      // THAT = *(LCL-1)
+	c.assembly = append(c.assembly, "@R13", "AM=M-1", "D=M", "@THIS", "M=D")      // THIS = *(LCL-2)
+	c.assembly = append(c.assembly, "@R13", "AM=M-1", "D=M", "@ARG", "M=D")       // ARG = *(LCL-3)
+	c.assembly = append(c.assembly, "@R13", "AM=M-1", "D=M", "@LCL", "M=D")       // LCL = *(LCL-4)
+	c.assembly = append(c.assembly, "@R14", "A=M", "0;JMP")                       // goto return address
+}
+
 func (c *CodeWriter) Close() {
 	// infinite loop
 	// NOTE: "END" is not a reserved label in Hack assembly

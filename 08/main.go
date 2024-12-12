@@ -51,10 +51,10 @@ func main() {
 			c.WriteGoto(p.Arg1())
 		case token.C_IF:
 			c.WriteIf(p.Arg1())
-			// case token.C_FUNCTION:
-			// 	c.WriteFunction(p.Arg1(), p.Arg2())
-			// case token.C_RETURN:
-			// 	c.WriteReturn()
+		case token.C_FUNCTION:
+			c.WriteFunction(p.Arg1(), p.Arg2())
+		case token.C_RETURN:
+			c.WriteReturn()
 			// case token.C_CALL:
 			// 	c.WriteCall(p.Arg1(), p.Arg2())
 		}
