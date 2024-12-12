@@ -65,6 +65,7 @@ func (c *CodeWriter) WriteIf(label string) {
 
 func (c *CodeWriter) Close() {
 	// infinite loop
+	// NOTE: "END" is not a reserved label in Hack assembly
 	c.assembly = append(c.assembly, "(END)")
 	c.assembly = append(c.assembly, "@END")
 	c.assembly = append(c.assembly, "0;JMP")
