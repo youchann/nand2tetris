@@ -28,24 +28,24 @@ func (p *Parser) Advance() {
 }
 
 func (p *Parser) CommandType() token.CommandType {
-	commandStr := p.commandStrList[p.currentIndex]
-	switch {
-	case strings.HasPrefix(commandStr, "push"):
+	c := token.CommandSymbol(strings.Fields(p.commandStrList[p.currentIndex])[0])
+	switch c {
+	case token.PUSH:
 		return token.C_PUSH
-	case strings.HasPrefix(commandStr, "pop"):
+	case token.POP:
 		return token.C_POP
-	// case strings.HasPrefix(commandStr, "label"):
-	// 	return C_LABEL
-	// case strings.HasPrefix(commandStr, "goto"):
-	// 	return C_GOTO
-	// case strings.HasPrefix(commandStr, "if-goto"):
-	// 	return C_IF
-	// case strings.HasPrefix(commandStr, "function"):
-	// 	return C_FUNCTION
-	// case strings.HasPrefix(commandStr, "return"):
-	// 	return C_RETURN
-	// case strings.HasPrefix(commandStr, "call"):
-	// 	return C_CALL
+	case token.LABEL:
+		return token.C_LABEL
+	case token.GOTO:
+		return token.C_GOTO
+	case token.IF_GOTO:
+		return token.C_IF
+	case token.FUNCTION:
+		return token.C_FUNCTION
+	case token.RETURN:
+		return token.C_RETURN
+	case token.CALL:
+		return token.C_CALL
 	default:
 		return token.C_ARITHMETIC
 	}

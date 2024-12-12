@@ -45,6 +45,18 @@ func main() {
 			c.WriteArithmetic(token.CommandSymbol(p.Arg1()))
 		case token.C_PUSH, token.C_POP:
 			c.WritePushPop(p.CommandType(), token.Segment(p.Arg1()), p.Arg2())
+		case token.C_LABEL:
+			c.WriteLabel(p.Arg1())
+		case token.C_GOTO:
+			c.WriteGoto(p.Arg1())
+		case token.C_IF:
+			c.WriteIf(p.Arg1())
+			// case token.C_FUNCTION:
+			// 	c.WriteFunction(p.Arg1(), p.Arg2())
+			// case token.C_RETURN:
+			// 	c.WriteReturn()
+			// case token.C_CALL:
+			// 	c.WriteCall(p.Arg1(), p.Arg2())
 		}
 		p.Advance()
 	}

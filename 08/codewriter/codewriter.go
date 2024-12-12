@@ -50,6 +50,19 @@ func (c *CodeWriter) WritePushPop(command token.CommandType, segment token.Segme
 	}
 }
 
+func (c *CodeWriter) WriteLabel(label string) {
+	c.assembly = append(c.assembly, "("+label+")")
+}
+
+func (c *CodeWriter) WriteGoto(label string) {
+	c.assembly = append(c.assembly, "@"+label, "0;JMP")
+}
+
+func (c *CodeWriter) WriteIf(label string) {
+	c.assembly = append(c.assembly, "@SP", "AM=M-1", "D=M") // move RAM[SP-1] to D
+	c.assembly = append(c.assembly, "@"+label, "D;JNE")     // if D != 0, jump to label
+}
+
 func (c *CodeWriter) Close() {
 	// infinite loop
 	c.assembly = append(c.assembly, "(END)")
