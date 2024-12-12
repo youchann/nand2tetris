@@ -94,11 +94,6 @@ func (c *CodeWriter) Close() {
 
 func generateInit() []string {
 	var result []string
-	result = append(result, "@256", "D=A", "@SP", "M=D")    // SP = 256
-	result = append(result, "@300", "D=A", "@LCL", "M=D")   // LCL = 300
-	result = append(result, "@400", "D=A", "@ARG", "M=D")   // ARG = 400
-	result = append(result, "@3000", "D=A", "@THIS", "M=D") // THIS = 3000
-	result = append(result, "@3010", "D=A", "@THAT", "M=D") // THAT = 3010
 	return result
 }
 
