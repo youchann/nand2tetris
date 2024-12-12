@@ -55,8 +55,8 @@ func main() {
 			c.WriteFunction(p.Arg1(), p.Arg2())
 		case token.C_RETURN:
 			c.WriteReturn()
-			// case token.C_CALL:
-			// 	c.WriteCall(p.Arg1(), p.Arg2())
+		case token.C_CALL:
+			c.WriteCall(p.Arg1(), p.Arg2())
 		}
 		p.Advance()
 	}

@@ -6,18 +6,21 @@ import (
 	"strings"
 
 	"github.com/youchann/nand2tetris/08/token"
-	"golang.org/x/exp/rand"
 )
 
 type CodeWriter struct {
-	filename string
-	assembly []string
+	filename     string
+	assembly     []string
+	compareCount int
+	callCount    int
 }
 
 func New(filename string) *CodeWriter {
 	return &CodeWriter{
-		filename: filename,
-		assembly: generateInit(),
+		filename:     filename,
+		assembly:     generateInit(),
+		compareCount: 0,
+		callCount:    0,
 	}
 }
 
@@ -30,7 +33,8 @@ func (c *CodeWriter) WriteArithmetic(command token.CommandSymbol) {
 	case token.NEG:
 		c.assembly = append(c.assembly, generateNEG()...)
 	case token.EQ, token.LT, token.GT:
-		c.assembly = append(c.assembly, generateCompare(command)...)
+		c.assembly = append(c.assembly, generateCompare(command, c.compareCount)...)
+		c.compareCount++
 	case token.AND:
 		c.assembly = append(c.assembly, generateAND()...)
 	case token.OR:
@@ -66,7 +70,7 @@ func (c *CodeWriter) WriteIf(label string) {
 func (c *CodeWriter) WriteFunction(functionName string, numLocals int) {
 	c.assembly = append(c.assembly, "("+functionName+")")
 	for i := 0; i < numLocals; i++ {
-		c.assembly = append(c.assembly, "@SP", "A=M", "M=0", "@SP", "M=M+1")
+		c.assembly = append(c.assembly, "@SP", "A=M", "M=0", "@SP", "M=M+1") // push 0
 	}
 }
 
@@ -80,6 +84,20 @@ func (c *CodeWriter) WriteReturn() {
 	c.assembly = append(c.assembly, "@R13", "AM=M-1", "D=M", "@ARG", "M=D")       // ARG = *(LCL-3)
 	c.assembly = append(c.assembly, "@R13", "AM=M-1", "D=M", "@LCL", "M=D")       // LCL = *(LCL-4)
 	c.assembly = append(c.assembly, "@R14", "A=M", "0;JMP")                       // goto return address
+}
+
+func (c *CodeWriter) WriteCall(functionName string, numArgs int) {
+	returnAddress := functionName + "$ret." + strconv.Itoa(c.callCount)
+	c.callCount++
+
+	c.assembly = append(c.assembly, "@"+returnAddress, "D=A", "@SP", "A=M", "M=D", "@SP", "M=M+1")                                               // push return address
+	c.assembly = append(c.assembly, "@LCL", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1")                                                          // push LCL
+	c.assembly = append(c.assembly, "@ARG", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1")                                                          // push ARG
+	c.assembly = append(c.assembly, "@THIS", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1")                                                         // push THIS
+	c.assembly = append(c.assembly, "@THAT", "D=M", "@SP", "A=M", "M=D", "@SP", "M=M+1")                                                         // push THAT
+	c.assembly = append(c.assembly, "@SP", "D=M", "@5", "D=D-A", "@"+strconv.Itoa(numArgs), "D=D-A", "@ARG", "M=D", "@SP", "D=M", "@LCL", "M=D") // ARG = SP - 5 - numArgs, LCL = SP
+	c.assembly = append(c.assembly, "@"+functionName, "0;JMP")                                                                                   // goto functionName
+	c.assembly = append(c.assembly, "("+returnAddress+")")                                                                                       // (returnAddress)
 }
 
 func (c *CodeWriter) Close() {
@@ -259,8 +277,8 @@ func generateNEG() []string {
 	return result
 }
 
-func generateCompare(command token.CommandSymbol) []string {
-	flag := strconv.Itoa(rand.Intn(1000000))
+func generateCompare(command token.CommandSymbol, compareCount int) []string {
+	flag := strconv.Itoa(compareCount)
 	var result []string
 	var jump string
 	switch command {
