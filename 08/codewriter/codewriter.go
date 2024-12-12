@@ -15,13 +15,24 @@ type CodeWriter struct {
 	callCount    int
 }
 
-func New(filename string) *CodeWriter {
-	return &CodeWriter{
-		filename:     filename,
-		assembly:     generateInit(),
+func New() *CodeWriter {
+	c := &CodeWriter{
+		filename:     "",
+		assembly:     nil,
 		compareCount: 0,
 		callCount:    0,
 	}
+	c.setInitAssembly()
+	return c
+}
+
+func (c *CodeWriter) setInitAssembly() {
+	c.assembly = []string{"@256", "D=A", "@SP", "M=D"} // SP = 256
+	c.WriteCall("Sys.init", 0)                         // call Sys.init
+}
+
+func (c *CodeWriter) Setfilename(filename string) {
+	c.filename = filename
 }
 
 func (c *CodeWriter) WriteArithmetic(command token.CommandSymbol) {
@@ -47,9 +58,9 @@ func (c *CodeWriter) WriteArithmetic(command token.CommandSymbol) {
 func (c *CodeWriter) WritePushPop(command token.CommandType, segment token.Segment, index int) {
 	switch command {
 	case token.C_PUSH:
-		c.assembly = append(c.assembly, generatePush(segment, index)...)
+		c.assembly = append(c.assembly, generatePush(segment, index, c.filename)...)
 	case token.C_POP:
-		c.assembly = append(c.assembly, generatePop(segment, index)...)
+		c.assembly = append(c.assembly, generatePop(segment, index, c.filename)...)
 	default:
 	}
 }
@@ -100,22 +111,14 @@ func (c *CodeWriter) WriteCall(functionName string, numArgs int) {
 	c.assembly = append(c.assembly, "("+returnAddress+")")                                                                                       // (returnAddress)
 }
 
-func (c *CodeWriter) Close() {
-	// infinite loop
-	// NOTE: "END" is not a reserved label in Hack assembly
-	c.assembly = append(c.assembly, "(END_HOGE)", "@END_HOGE", "0;JMP")
-	err := os.WriteFile(c.filename, []byte(strings.Join(c.assembly, "\n")), 0644)
+func (c *CodeWriter) Close(filename string) {
+	err := os.WriteFile(filename, []byte(strings.Join(c.assembly, "\n")), 0644)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func generateInit() []string {
-	var result []string
-	return result
-}
-
-func generatePush(segment token.Segment, index int) []string {
+func generatePush(segment token.Segment, index int, filename string) []string {
 	switch segment {
 	case token.SEGMENT_CONSTANT:
 		return generatePushConstant(index)
@@ -124,7 +127,7 @@ func generatePush(segment token.Segment, index int) []string {
 	case token.SEGMENT_POINTER:
 		return generatePushPointer(index)
 	case token.SEGMENT_STATIC:
-		return generatePushStatic(index)
+		return generatePushStatic(index, filename)
 	case token.SEGMENT_TEMP:
 		return generatePushTemp(index)
 	default:
@@ -174,11 +177,11 @@ func generatePushPointer(index int) []string {
 	return result
 }
 
-func generatePushStatic(index int) []string {
+func generatePushStatic(index int, filename string) []string {
 	var result []string
-	result = append(result, "@STATIC"+strconv.Itoa(index), "D=M") // D = RAM[STATIC + index]
-	result = append(result, "@SP", "A=M", "M=D")                  // RAM[SP] = D
-	result = append(result, "@SP", "M=M+1")                       // SP++
+	result = append(result, "@"+filename+"."+strconv.Itoa(index), "D=M") // D = filename.index
+	result = append(result, "@SP", "A=M", "M=D")                         // RAM[SP] = D
+	result = append(result, "@SP", "M=M+1")                              // SP++
 	return result
 }
 
@@ -191,14 +194,14 @@ func generatePushTemp(index int) []string {
 	return result
 }
 
-func generatePop(segment token.Segment, index int) []string {
+func generatePop(segment token.Segment, index int, filename string) []string {
 	switch segment {
 	case token.SEGMENT_LOCAL, token.SEGMENT_ARGUMENT, token.SEGMENT_THIS, token.SEGMENT_THAT:
 		return generatePopMemoryAccess(segment, index)
 	case token.SEGMENT_POINTER:
 		return generatePopPointer(index)
 	case token.SEGMENT_STATIC:
-		return generatePopStatic(index)
+		return generatePopStatic(index, filename)
 	case token.SEGMENT_TEMP:
 		return generatePopTemp(index)
 	default:
@@ -240,10 +243,10 @@ func generatePopPointer(index int) []string {
 	return result
 }
 
-func generatePopStatic(index int) []string {
+func generatePopStatic(index int, filename string) []string {
 	var result []string
 	result = append(result, "@SP", "AM=M-1", "D=M") // move RAM[SP-1] to D
-	result = append(result, "@STATIC"+strconv.Itoa(index), "M=D")
+	result = append(result, "@"+filename+"."+strconv.Itoa(index), "M=D")
 	return result
 }
 
