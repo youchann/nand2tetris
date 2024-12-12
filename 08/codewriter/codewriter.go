@@ -103,7 +103,7 @@ func (c *CodeWriter) WriteCall(functionName string, numArgs int) {
 func (c *CodeWriter) Close() {
 	// infinite loop
 	// NOTE: "END" is not a reserved label in Hack assembly
-	c.assembly = append(c.assembly, "(END)", "@END", "0;JMP")
+	c.assembly = append(c.assembly, "(END_HOGE)", "@END_HOGE", "0;JMP")
 	err := os.WriteFile(c.filename, []byte(strings.Join(c.assembly, "\n")), 0644)
 	if err != nil {
 		panic(err)
