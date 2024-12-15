@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/youchann/nand2tetris/09/tokenizer"
 )
 
 func getXMLPath(jackFilePath string) string {
@@ -53,6 +55,12 @@ func main() {
 	}
 
 	for _, jackFile := range jackFiles {
-		fmt.Println(getXMLPath(jackFile))
+		content, err := os.ReadFile(jackFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", jackFile, err)
+			os.Exit(1)
+		}
+		t := tokenizer.New(string(content))
+		fmt.Println(t.Input)
 	}
 }
