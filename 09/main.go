@@ -60,7 +60,23 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", jackFile, err)
 			os.Exit(1)
 		}
+
+		xmlPath := getXMLPath(jackFile)
+		xmlFile, err := os.Create(xmlPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating file %s: %v\n", xmlPath, err)
+			os.Exit(1)
+		}
+		defer xmlFile.Close()
+
+		var results []string
+		results = append(results, "<tokens>")
 		t := tokenizer.New(string(content))
-		fmt.Println(t.Input)
+		for t.HasMoreTokens() {
+			results = append(results, t.CurrentToken().Xml())
+			t.Advance()
+		}
+		results = append(results, "</tokens>")
+		xmlFile.WriteString(strings.Join(results, "\n"))
 	}
 }
