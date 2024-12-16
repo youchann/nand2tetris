@@ -72,10 +72,7 @@ func main() {
 
 		t := tokenizer.New(string(content))
 		ce := compilationengine.New(t)
-		if err := ce.CompileClass(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error compiling class: %v\n", err)
-			os.Exit(1)
-		}
+		ce.CompileClass()
 		xmlFile.WriteString(ce.XML)
 	}
 }

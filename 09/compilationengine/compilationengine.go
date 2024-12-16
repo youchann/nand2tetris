@@ -1,8 +1,6 @@
 package compilationengine
 
 import (
-	"errors"
-
 	"github.com/youchann/nand2tetris/09/token"
 	"github.com/youchann/nand2tetris/09/tokenizer"
 )
@@ -21,459 +19,302 @@ func New(t *tokenizer.JackTokenizer) *CompilationEngine {
 	}
 }
 
-func (ce *CompilationEngine) CompileClass() error {
-	if ce.tokenizer.CurrentToken().Literal != "class" {
-		return errors.New("expected 'class' keyword")
-	}
+func (ce *CompilationEngine) CompileClass() {
 	ce.print("<class>")
 	ce.indent++
 
-	if err := ce.process("class"); err != nil {
-		return err
-	}
+	ce.process("class")
 
+	// className
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-		return errors.New("expected identifier")
+		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
 
-	if err := ce.process("{"); err != nil {
-		return err
-	}
-
-	if err := ce.CompileClassVarDec(); err != nil {
-		return err
-	}
-	if err := ce.CompileSubroutine(); err != nil {
-		return err
-	}
-
-	if err := ce.process("}"); err != nil {
-		return err
-	}
+	ce.process("{")
+	ce.CompileClassVarDec()
+	ce.CompileSubroutine()
+	ce.process("}")
 
 	ce.indent--
 	ce.print("</class>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileClassVarDec() error {
+func (ce *CompilationEngine) CompileClassVarDec() {
 	for ce.tokenizer.CurrentToken().Literal == "static" || ce.tokenizer.CurrentToken().Literal == "field" {
 		ce.print("<classVarDec>")
 		ce.indent++
 
 		// static or field
-		if err := ce.process(ce.tokenizer.CurrentToken().Literal); err != nil {
-			return err
-		}
-
+		ce.process(ce.tokenizer.CurrentToken().Literal)
 		// type
-		if err := ce.processType(); err != nil {
-			return err
-		}
+		ce.processType()
 
 		// varName
 		for ce.tokenizer.CurrentToken().Literal != ";" {
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				return errors.New("expected identifier")
+				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 			}
 			ce.print(ce.tokenizer.CurrentToken().Xml())
 			ce.tokenizer.Advance()
-
 			if ce.tokenizer.CurrentToken().Literal == "," {
-				if err := ce.process(","); err != nil {
-					return err
-				}
+				ce.process(",")
 			}
 		}
 
-		if err := ce.process(";"); err != nil {
-			return err
-		}
+		ce.process(";")
 
 		ce.indent--
 		ce.print("</classVarDec>")
 	}
-	return nil
 }
 
-func (ce *CompilationEngine) CompileSubroutine() error {
+func (ce *CompilationEngine) CompileSubroutine() {
 	for ce.tokenizer.CurrentToken().Literal == "constructor" || ce.tokenizer.CurrentToken().Literal == "function" || ce.tokenizer.CurrentToken().Literal == "method" {
 		ce.print("<subroutineDec>")
 		ce.indent++
 
 		// constructor, function, or method
-		if err := ce.process(ce.tokenizer.CurrentToken().Literal); err != nil {
-			return err
-		}
+		ce.process(ce.tokenizer.CurrentToken().Literal)
 
 		// void or type
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && ce.tokenizer.CurrentToken().Literal != "void" && ce.tokenizer.CurrentToken().Literal != "int" && ce.tokenizer.CurrentToken().Literal != "char" && ce.tokenizer.CurrentToken().Literal != "boolean" {
-			return errors.New("expected type")
+			panic("expected type or void but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 
 		// subroutineName
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			return errors.New("expected identifier")
+			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 
-		if err := ce.process("("); err != nil {
-			return err
-		}
-
-		if err := ce.CompileParameterList(); err != nil {
-			return err
-		}
-
-		if err := ce.process(")"); err != nil {
-			return err
-		}
-
-		if err := ce.CompileSubroutineBody(); err != nil {
-			return err
-		}
+		ce.process("(")
+		ce.CompileParameterList()
+		ce.process(")")
+		ce.CompileSubroutineBody()
 
 		ce.indent--
 		ce.print("</subroutineDec>")
 	}
-	return nil
 }
 
-func (ce *CompilationEngine) CompileParameterList() error {
+func (ce *CompilationEngine) CompileParameterList() {
 	ce.print("<parameterList>")
 	ce.indent++
 
 	for ce.tokenizer.CurrentToken().Literal != ")" {
 		// type
-		if err := ce.processType(); err != nil {
-			return err
-		}
+		ce.processType()
 
 		// varName
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			return errors.New("expected identifier")
+			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 
 		if ce.tokenizer.CurrentToken().Literal == "," {
-			if err := ce.process(","); err != nil {
-				return err
-			}
+			ce.process(",")
 		}
 	}
 
 	ce.indent--
 	ce.print("</parameterList>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileSubroutineBody() error {
+func (ce *CompilationEngine) CompileSubroutineBody() {
 	ce.print("<subroutineBody>")
 	ce.indent++
-	if err := ce.process("{"); err != nil {
-		return err
-	}
 
-	if err := ce.CompileVarDec(); err != nil {
-		return err
-	}
+	ce.process("{")
+	ce.CompileVarDec()
+	ce.CompileStatements()
+	ce.process("}")
 
-	if err := ce.CompileStatements(); err != nil {
-		return err
-	}
-
-	if err := ce.process("}"); err != nil {
-		return err
-	}
 	ce.indent--
 	ce.print("</subroutineBody>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileVarDec() error {
+func (ce *CompilationEngine) CompileVarDec() {
 	for ce.tokenizer.CurrentToken().Literal == "var" {
 		ce.print("<varDec>")
 		ce.indent++
 
-		if err := ce.process("var"); err != nil {
-			return err
-		}
-
-		// type
-		if err := ce.processType(); err != nil {
-			return err
-		}
+		ce.process("var")
+		ce.processType()
 
 		// varName
 		for ce.tokenizer.CurrentToken().Literal != ";" {
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				return errors.New("expected identifier")
+				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 			}
 			ce.print(ce.tokenizer.CurrentToken().Xml())
 			ce.tokenizer.Advance()
 
 			if ce.tokenizer.CurrentToken().Literal == "," {
-				if err := ce.process(","); err != nil {
-					return err
-				}
+				ce.process(",")
 			}
 		}
 
-		if err := ce.process(";"); err != nil {
-			return err
-		}
+		ce.process(";")
 
 		ce.indent--
 		ce.print("</varDec>")
 	}
-	return nil
 }
 
-func (ce *CompilationEngine) CompileStatements() error {
+func (ce *CompilationEngine) CompileStatements() {
 	ce.print("<statements>")
 	ce.indent++
 
 	for ce.tokenizer.CurrentToken().Literal == string(token.LET) || ce.tokenizer.CurrentToken().Literal == string(token.IF) || ce.tokenizer.CurrentToken().Literal == string(token.WHILE) || ce.tokenizer.CurrentToken().Literal == string(token.DO) || ce.tokenizer.CurrentToken().Literal == string(token.RETURN) {
-		var err error
 		switch ce.tokenizer.CurrentToken().Literal {
 		case string(token.LET):
-			err = ce.CompileLet()
+			ce.CompileLet()
 		case string(token.IF):
-			err = ce.CompileIf()
+			ce.CompileIf()
 		case string(token.WHILE):
-			err = ce.CompileWhile()
+			ce.CompileWhile()
 		case string(token.DO):
-			err = ce.CompileDo()
+			ce.CompileDo()
 		case string(token.RETURN):
-			err = ce.CompileReturn()
-		}
-		if err != nil {
-			return err
+			ce.CompileReturn()
 		}
 	}
 
 	ce.indent--
 	ce.print("</statements>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileLet() error {
+func (ce *CompilationEngine) CompileLet() {
 	ce.print("<letStatement>")
 	ce.indent++
 
-	if err := ce.process("let"); err != nil {
-		return err
-	}
+	ce.process("let")
 
 	// varName
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-		return errors.New("expected identifier")
+		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
 
 	if ce.tokenizer.CurrentToken().Literal == "[" {
-		if err := ce.process("["); err != nil {
-			return err
-		}
-
-		if err := ce.CompileExpression(); err != nil {
-			return err
-		}
-
-		if err := ce.process("]"); err != nil {
-			return err
-		}
+		ce.process("[")
+		ce.CompileExpression()
+		ce.process("]")
 	}
 
-	if err := ce.process("="); err != nil {
-		return err
-	}
-	if err := ce.CompileExpression(); err != nil {
-		return err
-	}
-	if err := ce.process(";"); err != nil {
-		return err
-	}
+	ce.process("=")
+	ce.CompileExpression()
+	ce.process(";")
 
 	ce.indent--
 	ce.print("</letStatement>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileIf() error {
+func (ce *CompilationEngine) CompileIf() {
 	ce.print("<ifStatement>")
 	ce.indent++
 
-	if err := ce.process("if"); err != nil {
-		return err
-	}
-	if err := ce.process("("); err != nil {
-		return err
-	}
-	if err := ce.CompileExpression(); err != nil {
-		return err
-	}
-	if err := ce.process(")"); err != nil {
-		return err
-	}
-	if err := ce.process("{"); err != nil {
-		return err
-	}
-	if err := ce.CompileStatements(); err != nil {
-		return err
-	}
-	if err := ce.process("}"); err != nil {
-		return err
-	}
+	ce.process("if")
+	ce.process("(")
+	ce.CompileExpression()
+	ce.process(")")
+	ce.process("{")
+	ce.CompileStatements()
+	ce.process("}")
 	if ce.tokenizer.CurrentToken().Literal == "else" {
-		if err := ce.process("else"); err != nil {
-			return err
-		}
-		if err := ce.process("{"); err != nil {
-			return err
-		}
-		if err := ce.CompileStatements(); err != nil {
-			return err
-		}
-		if err := ce.process("}"); err != nil {
-			return err
-		}
+		ce.process("else")
+		ce.process("{")
+		ce.CompileStatements()
+		ce.process("}")
 	}
 
 	ce.indent--
 	ce.print("</ifStatement>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileWhile() error {
+func (ce *CompilationEngine) CompileWhile() {
 	ce.print("<whileStatement>")
 	ce.indent++
 
-	if err := ce.process("while"); err != nil {
-		return err
-	}
-	if err := ce.process("("); err != nil {
-		return err
-	}
-	if err := ce.CompileExpression(); err != nil {
-		return err
-	}
-	if err := ce.process(")"); err != nil {
-		return err
-	}
-	if err := ce.process("{"); err != nil {
-		return err
-	}
-	if err := ce.CompileStatements(); err != nil {
-		return err
-	}
-	if err := ce.process("}"); err != nil {
-		return err
-	}
+	ce.process("while")
+	ce.process("(")
+	ce.CompileExpression()
+	ce.process(")")
+	ce.process("{")
+	ce.CompileStatements()
+	ce.process("}")
 
 	ce.indent--
 	ce.print("</whileStatement>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileDo() error {
+func (ce *CompilationEngine) CompileDo() {
 	ce.print("<doStatement>")
 	ce.indent++
 
-	if err := ce.process("do"); err != nil {
-		return err
-	}
+	ce.process("do")
 
+	// subroutineCall
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-		return errors.New("expected identifier")
+		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
-
 	if ce.tokenizer.CurrentToken().Literal == "." {
-		if err := ce.process("."); err != nil {
-			return err
-		}
-
+		ce.process(".")
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			return errors.New("expected identifier")
+			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 	}
 
-	if err := ce.process("("); err != nil {
-		return err
-	}
-	if _, err := ce.CompileExpressionList(); err != nil {
-		return err
-	}
-	if err := ce.process(")"); err != nil {
-		return err
-	}
-	if err := ce.process(";"); err != nil {
-		return err
-	}
+	ce.process("(")
+	ce.CompileExpressionList()
+	ce.process(")")
+	ce.process(";")
 
 	ce.indent--
 	ce.print("</doStatement>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileReturn() error {
+func (ce *CompilationEngine) CompileReturn() {
 	ce.print("<returnStatement>")
 	ce.indent++
 
-	if err := ce.process("return"); err != nil {
-		return err
-	}
-
+	ce.process("return")
 	if ce.tokenizer.CurrentToken().Literal != ";" {
-		if err := ce.CompileExpression(); err != nil {
-			return err
-		}
+		ce.CompileExpression()
 	}
-
-	if err := ce.process(";"); err != nil {
-		return err
-	}
+	ce.process(";")
 
 	ce.indent--
 	ce.print("</returnStatement>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileExpression() error {
+func (ce *CompilationEngine) CompileExpression() {
 	ce.print("<expression>")
 	ce.indent++
 
-	if err := ce.CompileTerm(); err != nil {
-		return err
-	}
+	ce.CompileTerm()
 
 	for ce.tokenizer.CurrentToken().Literal == "+" || ce.tokenizer.CurrentToken().Literal == "-" || ce.tokenizer.CurrentToken().Literal == "*" || ce.tokenizer.CurrentToken().Literal == "/" || ce.tokenizer.CurrentToken().Literal == "&" || ce.tokenizer.CurrentToken().Literal == "|" || ce.tokenizer.CurrentToken().Literal == "<" || ce.tokenizer.CurrentToken().Literal == ">" || ce.tokenizer.CurrentToken().Literal == "=" {
-		if err := ce.process(ce.tokenizer.CurrentToken().Literal); err != nil {
-			return err
-		}
-
-		if err := ce.CompileTerm(); err != nil {
-			return err
-		}
+		ce.process(ce.tokenizer.CurrentToken().Literal)
+		ce.CompileTerm()
 	}
 
 	ce.indent--
 	ce.print("</expression>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileTerm() error {
+func (ce *CompilationEngine) CompileTerm() {
 	ce.print("<term>")
 	ce.indent++
 
@@ -481,127 +322,77 @@ func (ce *CompilationEngine) CompileTerm() error {
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 	} else if ce.tokenizer.CurrentToken().Literal == "(" {
-		if err := ce.process("("); err != nil {
-			return err
-		}
-
-		if err := ce.CompileExpression(); err != nil {
-			return err
-		}
-
-		if err := ce.process(")"); err != nil {
-			return err
-		}
+		ce.process("(")
+		ce.CompileExpression()
+		ce.process(")")
 	} else if ce.tokenizer.CurrentToken().Literal == "-" || ce.tokenizer.CurrentToken().Literal == "~" {
-		if err := ce.process(ce.tokenizer.CurrentToken().Literal); err != nil {
-			return err
-		}
-
-		if err := ce.CompileTerm(); err != nil {
-			return err
-		}
+		ce.process(ce.tokenizer.CurrentToken().Literal)
+		ce.CompileTerm()
 	} else {
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			return errors.New("expected identifier")
+			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 
 		if ce.tokenizer.CurrentToken().Literal == "[" {
-			if err := ce.process("["); err != nil {
-				return err
-			}
-
-			if err := ce.CompileExpression(); err != nil {
-				return err
-			}
-
-			if err := ce.process("]"); err != nil {
-				return err
-			}
+			ce.process("[")
+			ce.CompileExpression()
+			ce.process("]")
 		} else if ce.tokenizer.CurrentToken().Literal == "." {
-			if err := ce.process("."); err != nil {
-				return err
-			}
-
+			ce.process(".")
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				return errors.New("expected identifier")
+				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 			}
 			ce.print(ce.tokenizer.CurrentToken().Xml())
 			ce.tokenizer.Advance()
 
-			if err := ce.process("("); err != nil {
-				return err
-			}
-
-			if _, err := ce.CompileExpressionList(); err != nil {
-				return err
-			}
-
-			if err := ce.process(")"); err != nil {
-				return err
-			}
+			ce.process("(")
+			ce.CompileExpressionList()
+			ce.process(")")
 		} else if ce.tokenizer.CurrentToken().Literal == "(" {
-			if err := ce.process("("); err != nil {
-				return err
-			}
-
-			if _, err := ce.CompileExpressionList(); err != nil {
-				return err
-			}
-
-			if err := ce.process(")"); err != nil {
-				return err
-			}
+			ce.process("(")
+			ce.CompileExpressionList()
+			ce.process(")")
 		}
 	}
 
 	ce.indent--
 	ce.print("</term>")
-	return nil
 }
 
-func (ce *CompilationEngine) CompileExpressionList() (int, error) {
+func (ce *CompilationEngine) CompileExpressionList() int {
 	count := 0
 	ce.print("<expressionList>")
 	ce.indent++
 
 	for ce.tokenizer.CurrentToken().Literal != ")" {
-		if err := ce.CompileExpression(); err != nil {
-			return 0, err
-		}
-
+		ce.CompileExpression()
 		count++
-
 		if ce.tokenizer.CurrentToken().Literal == "," {
-			if err := ce.process(","); err != nil {
-				return 0, err
-			}
+			ce.process(",")
 		}
 	}
 
 	ce.indent--
 	ce.print("</expressionList>")
-	return count, nil
+	return count
 }
 
-func (ce *CompilationEngine) process(str string) error {
-	if ce.tokenizer.CurrentToken().Literal == str {
-		ce.print(ce.tokenizer.CurrentToken().Xml())
-		ce.tokenizer.Advance()
-	} else {
-		return errors.New("expected " + str + " but got " + ce.tokenizer.CurrentToken().Literal)
-	}
-	return nil
-}
-
-func (ce *CompilationEngine) processType() error {
-	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && ce.tokenizer.CurrentToken().Literal != "int" && ce.tokenizer.CurrentToken().Literal != "char" && ce.tokenizer.CurrentToken().Literal != "boolean" {
-		return errors.New("expected type")
+func (ce *CompilationEngine) process(str string) {
+	if ce.tokenizer.CurrentToken().Literal != str {
+		panic("expected " + str + " but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
-	return nil
+}
+
+func (ce *CompilationEngine) processType() {
+	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && ce.tokenizer.CurrentToken().Literal != "int" && ce.tokenizer.CurrentToken().Literal != "char" && ce.tokenizer.CurrentToken().Literal != "boolean" {
+		panic("expected type but got " + ce.tokenizer.CurrentToken().Literal)
+	}
+	ce.print(ce.tokenizer.CurrentToken().Xml())
+	ce.tokenizer.Advance()
 }
 
 func (ce *CompilationEngine) print(str string) {

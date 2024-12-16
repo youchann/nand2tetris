@@ -14,6 +14,8 @@ func (token *Token) Xml() string {
 			return "<symbol> &gt; </symbol>"
 		} else if token.Literal == "<" {
 			return "<symbol> &lt; </symbol>"
+		} else if token.Literal == "&" {
+			return "<symbol> &amp; </symbol>"
 		}
 		return "<symbol> " + token.Literal + " </symbol>"
 	case IDENTIFIER:
