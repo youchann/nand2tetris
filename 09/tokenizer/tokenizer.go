@@ -19,12 +19,8 @@ func New(input string) *JackTokenizer {
 	return t
 }
 
-// TODO: いらないかも
 func (t *JackTokenizer) CurrentToken() *token.Token {
 	return t.currentToken
-}
-func (t *JackTokenizer) Input() string {
-	return t.input
 }
 
 func (t *JackTokenizer) HasMoreTokens() bool {
