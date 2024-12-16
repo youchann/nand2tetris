@@ -1,6 +1,8 @@
 package compilationengine
 
 import (
+	"slices"
+
 	"github.com/youchann/nand2tetris/09/token"
 	"github.com/youchann/nand2tetris/09/tokenizer"
 )
@@ -71,7 +73,8 @@ func (ce *CompilationEngine) CompileClassVarDec() {
 }
 
 func (ce *CompilationEngine) CompileSubroutine() {
-	for ce.tokenizer.CurrentToken().Literal == "constructor" || ce.tokenizer.CurrentToken().Literal == "function" || ce.tokenizer.CurrentToken().Literal == "method" {
+	subroutineType := []token.Keyword{token.CONSTRUCTOR, token.FUNCTION, token.METHOD}
+	for slices.Contains(subroutineType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		ce.print("<subroutineDec>")
 		ce.indent++
 
@@ -79,7 +82,8 @@ func (ce *CompilationEngine) CompileSubroutine() {
 		ce.process(ce.tokenizer.CurrentToken().Literal)
 
 		// void or type
-		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && ce.tokenizer.CurrentToken().Literal != "void" && ce.tokenizer.CurrentToken().Literal != "int" && ce.tokenizer.CurrentToken().Literal != "char" && ce.tokenizer.CurrentToken().Literal != "boolean" {
+		voidOrType := []token.Keyword{token.VOID, token.INT, token.CHAR, token.BOOLEAN}
+		if !slices.Contains(voidOrType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 			panic("expected type or void but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
@@ -171,17 +175,18 @@ func (ce *CompilationEngine) CompileStatements() {
 	ce.print("<statements>")
 	ce.indent++
 
-	for ce.tokenizer.CurrentToken().Literal == string(token.LET) || ce.tokenizer.CurrentToken().Literal == string(token.IF) || ce.tokenizer.CurrentToken().Literal == string(token.WHILE) || ce.tokenizer.CurrentToken().Literal == string(token.DO) || ce.tokenizer.CurrentToken().Literal == string(token.RETURN) {
-		switch ce.tokenizer.CurrentToken().Literal {
-		case string(token.LET):
+	statementPrefix := []token.Keyword{token.LET, token.IF, token.WHILE, token.DO, token.RETURN}
+	for slices.Contains(statementPrefix, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
+		switch token.Keyword(ce.tokenizer.CurrentToken().Literal) {
+		case token.LET:
 			ce.CompileLet()
-		case string(token.IF):
+		case token.IF:
 			ce.CompileIf()
-		case string(token.WHILE):
+		case token.WHILE:
 			ce.CompileWhile()
-		case string(token.DO):
+		case token.DO:
 			ce.CompileDo()
-		case string(token.RETURN):
+		case token.RETURN:
 			ce.CompileReturn()
 		}
 	}
@@ -305,7 +310,8 @@ func (ce *CompilationEngine) CompileExpression() {
 
 	ce.CompileTerm()
 
-	for ce.tokenizer.CurrentToken().Literal == "+" || ce.tokenizer.CurrentToken().Literal == "-" || ce.tokenizer.CurrentToken().Literal == "*" || ce.tokenizer.CurrentToken().Literal == "/" || ce.tokenizer.CurrentToken().Literal == "&" || ce.tokenizer.CurrentToken().Literal == "|" || ce.tokenizer.CurrentToken().Literal == "<" || ce.tokenizer.CurrentToken().Literal == ">" || ce.tokenizer.CurrentToken().Literal == "=" {
+	operand := []token.Symbol{token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.AND, token.PIPE, token.LESS_THAN, token.GREATER_THAN, token.EQUAL}
+	for slices.Contains(operand, token.Symbol(ce.tokenizer.CurrentToken().Literal)) {
 		ce.process(ce.tokenizer.CurrentToken().Literal)
 		ce.CompileTerm()
 	}
@@ -318,7 +324,9 @@ func (ce *CompilationEngine) CompileTerm() {
 	ce.print("<term>")
 	ce.indent++
 
-	if ce.tokenizer.CurrentToken().Type == token.INT_CONST || ce.tokenizer.CurrentToken().Type == token.STRING_CONST || ce.tokenizer.CurrentToken().Literal == string(token.TRUE) || ce.tokenizer.CurrentToken().Literal == string(token.FALSE) || ce.tokenizer.CurrentToken().Literal == string(token.NULL) || ce.tokenizer.CurrentToken().Literal == string(token.THIS) {
+	constants := []token.TokenType{token.INT_CONST, token.STRING_CONST}
+	keywordConstants := []token.Keyword{token.TRUE, token.FALSE, token.NULL, token.THIS}
+	if slices.Contains(constants, ce.tokenizer.CurrentToken().Type) || slices.Contains(keywordConstants, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 	} else if ce.tokenizer.CurrentToken().Literal == "(" {
@@ -388,7 +396,8 @@ func (ce *CompilationEngine) process(str string) {
 }
 
 func (ce *CompilationEngine) processType() {
-	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && ce.tokenizer.CurrentToken().Literal != "int" && ce.tokenizer.CurrentToken().Literal != "char" && ce.tokenizer.CurrentToken().Literal != "boolean" {
+	types := []token.Keyword{token.INT, token.CHAR, token.BOOLEAN}
+	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && !slices.Contains(types, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		panic("expected type but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
