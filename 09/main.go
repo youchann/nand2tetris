@@ -13,7 +13,7 @@ import (
 func getXMLPath(jackFilePath string) string {
 	dir := filepath.Dir(jackFilePath)
 	baseFile := filepath.Base(jackFilePath)
-	xmlFileName := strings.TrimSuffix(baseFile, ".jack") + "TT.xml"
+	xmlFileName := strings.TrimSuffix(baseFile, ".jack") + "_.xml"
 	return filepath.Join(dir, xmlFileName)
 }
 
@@ -72,11 +72,10 @@ func main() {
 
 		t := tokenizer.New(string(content))
 		ce := compilationengine.New(t)
-		fmt.Println("Compiling", jackFile)
 		if err := ce.CompileClass(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error compiling class: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(ce.XML)
+		xmlFile.WriteString(ce.XML)
 	}
 }
