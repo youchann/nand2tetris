@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/youchann/nand2tetris/09/token"
+	"github.com/youchann/nand2tetris/10-1_tokenizer/token"
 )
 
 type JackTokenizer struct {

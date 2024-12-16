@@ -3,8 +3,8 @@ package compilationengine
 import (
 	"slices"
 
-	"github.com/youchann/nand2tetris/10/token"
-	"github.com/youchann/nand2tetris/10/tokenizer"
+	"github.com/youchann/nand2tetris/10-2_compilerengine/token"
+	"github.com/youchann/nand2tetris/10-2_compilerengine/tokenizer"
 )
 
 type CompilationEngine struct {
