@@ -6,13 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/youchann/nand2tetris/09/tokenizer"
+	"github.com/youchann/nand2tetris/10/compilationengine"
+	"github.com/youchann/nand2tetris/10/tokenizer"
 )
 
 func getXMLPath(jackFilePath string) string {
 	dir := filepath.Dir(jackFilePath)
 	baseFile := filepath.Base(jackFilePath)
-	xmlFileName := strings.TrimSuffix(baseFile, ".jack") + "TT.xml"
+	xmlFileName := strings.TrimSuffix(baseFile, ".jack") + "_.xml"
 	return filepath.Join(dir, xmlFileName)
 }
 
@@ -69,14 +70,9 @@ func main() {
 		}
 		defer xmlFile.Close()
 
-		var results []string
-		results = append(results, "<tokens>")
 		t := tokenizer.New(string(content))
-		for t.HasMoreTokens() {
-			results = append(results, t.CurrentToken().Xml())
-			t.Advance()
-		}
-		results = append(results, "</tokens>")
-		xmlFile.WriteString(strings.Join(results, "\n"))
+		ce := compilationengine.New(t)
+		ce.CompileClass()
+		xmlFile.WriteString(ce.XML)
 	}
 }

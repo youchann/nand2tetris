@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/youchann/nand2tetris/09/token"
+	"github.com/youchann/nand2tetris/10/token"
 )
 
 type JackTokenizer struct {
@@ -19,12 +19,8 @@ func New(input string) *JackTokenizer {
 	return t
 }
 
-// TODO: いらないかも
 func (t *JackTokenizer) CurrentToken() *token.Token {
 	return t.currentToken
-}
-func (t *JackTokenizer) Input() string {
-	return t.input
 }
 
 func (t *JackTokenizer) HasMoreTokens() bool {
