@@ -10,6 +10,11 @@ func (token *Token) Xml() string {
 	case KEYWORD:
 		return "<keyword> " + token.Literal + " </keyword>"
 	case SYMBOL:
+		if token.Literal == ">" {
+			return "<symbol> &gt; </symbol>"
+		} else if token.Literal == "<" {
+			return "<symbol> &lt; </symbol>"
+		}
 		return "<symbol> " + token.Literal + " </symbol>"
 	case IDENTIFIER:
 		return "<identifier> " + token.Literal + " </identifier>"

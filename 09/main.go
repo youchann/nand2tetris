@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/youchann/nand2tetris/09/compilationengine"
 	"github.com/youchann/nand2tetris/09/tokenizer"
 )
 
@@ -69,14 +70,13 @@ func main() {
 		}
 		defer xmlFile.Close()
 
-		var results []string
-		results = append(results, "<tokens>")
 		t := tokenizer.New(string(content))
-		for t.HasMoreTokens() {
-			results = append(results, t.CurrentToken().Xml())
-			t.Advance()
+		ce := compilationengine.New(t)
+		fmt.Println("Compiling", jackFile)
+		if err := ce.CompileClass(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error compiling class: %v\n", err)
+			os.Exit(1)
 		}
-		results = append(results, "</tokens>")
-		xmlFile.WriteString(strings.Join(results, "\n"))
+		fmt.Println(ce.XML)
 	}
 }
