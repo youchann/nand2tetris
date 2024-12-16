@@ -83,7 +83,7 @@ func (ce *CompilationEngine) CompileSubroutine() {
 
 		// void or type
 		voidOrType := []token.Keyword{token.VOID, token.INT, token.CHAR, token.BOOLEAN}
-		if !slices.Contains(voidOrType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
+		if !slices.Contains(voidOrType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) && ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected type or void but got " + ce.tokenizer.CurrentToken().Literal)
 		}
 		ce.print(ce.tokenizer.CurrentToken().Xml())
