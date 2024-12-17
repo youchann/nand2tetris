@@ -15,16 +15,18 @@ type CompilationEngine struct {
 	vmwriter     *vmwriter.VMWriter
 	indent       int
 	XML          string
+	className    string
 	classST      *symboltable.SymbolTable
 	subroutineST *symboltable.SymbolTable
 }
 
-func New(t *tokenizer.JackTokenizer, w *vmwriter.VMWriter) *CompilationEngine {
+func New(n string, t *tokenizer.JackTokenizer, w *vmwriter.VMWriter) *CompilationEngine {
 	return &CompilationEngine{
 		tokenizer:    t,
 		vmwriter:     w,
 		indent:       0,
 		XML:          "",
+		className:    n,
 		classST:      symboltable.New(),
 		subroutineST: symboltable.New(),
 	}
@@ -37,10 +39,13 @@ func (ce *CompilationEngine) CompileClass() {
 	ce.process("class")
 
 	// className
+	name := ce.tokenizer.CurrentToken().Literal
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+		panic("expected identifier but got " + name)
+	} else if name != ce.className {
+		panic("class name does not match file name")
 	}
-	ce.print("<identifier> " + "name: " + ce.tokenizer.CurrentToken().Literal + ", category: class, index: -1, usage: definition" + " </identifier>")
+	ce.print("<identifier> " + "name: " + name + ", category: class, index: -1, usage: definition" + " </identifier>")
 	ce.tokenizer.Advance()
 
 	ce.process("{")
@@ -102,15 +107,19 @@ func (ce *CompilationEngine) CompileSubroutine() {
 		ce.tokenizer.Advance()
 
 		// subroutineName
+		name := ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+			panic("expected identifier but got " + name)
 		}
-		ce.print("<identifier> " + "name: " + ce.tokenizer.CurrentToken().Literal + ", category: subroutine, index: -1, usage: definition" + " </identifier>")
+		ce.print("<identifier> " + "name: " + name + ", category: subroutine, index: -1, usage: definition" + " </identifier>")
 		ce.tokenizer.Advance()
 
 		ce.process("(")
 		ce.CompileParameterList()
 		ce.process(")")
+
+		ce.vmwriter.WriteFunction(name, ce.subroutineST.VarCount(symboltable.ARGUMENT))
+
 		ce.CompileSubroutineBody()
 
 		ce.indent--
@@ -306,18 +315,22 @@ func (ce *CompilationEngine) CompileDo() {
 	ce.tokenizer.Advance()
 	if ce.tokenizer.CurrentToken().Literal == "." {
 		ce.process(".")
-		name = ce.tokenizer.CurrentToken().Literal
+		n := ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			panic("expected identifier but got " + name)
+			panic("expected identifier but got " + n)
 		}
-		ce.print("<identifier> " + "name: " + name + ", category: subroutine, index: -1, usage: using" + " </identifier>")
+		ce.print("<identifier> " + "name: " + n + ", category: subroutine, index: -1, usage: using" + " </identifier>")
+		name += "." + n
 		ce.tokenizer.Advance()
 	}
 
 	ce.process("(")
-	ce.CompileExpressionList()
+	c := ce.CompileExpressionList()
 	ce.process(")")
 	ce.process(";")
+
+	ce.vmwriter.WriteCall(name, c)
+	ce.vmwriter.WritePop(vmwriter.TEMP, 0)
 
 	ce.indent--
 	ce.print("</doStatement>")
@@ -328,9 +341,12 @@ func (ce *CompilationEngine) CompileReturn() {
 	ce.indent++
 
 	ce.process("return")
-	if ce.tokenizer.CurrentToken().Literal != ";" {
+	if ce.tokenizer.CurrentToken().Literal == ";" {
+		ce.vmwriter.WritePush(vmwriter.CONSTANT, 0)
+	} else {
 		ce.CompileExpression()
 	}
+	ce.vmwriter.WriteReturn()
 	ce.process(";")
 
 	ce.indent--
@@ -345,8 +361,29 @@ func (ce *CompilationEngine) CompileExpression() {
 
 	operand := []token.Symbol{token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.AND, token.PIPE, token.LESS_THAN, token.GREATER_THAN, token.EQUAL}
 	for slices.Contains(operand, token.Symbol(ce.tokenizer.CurrentToken().Literal)) {
-		ce.process(ce.tokenizer.CurrentToken().Literal)
+		op := ce.tokenizer.CurrentToken().Literal
+		ce.process(op)
 		ce.CompileTerm()
+		switch token.Symbol(op) {
+		case token.PLUS:
+			ce.vmwriter.WriteArithmetic(vmwriter.ADD)
+		case token.MINUS:
+			ce.vmwriter.WriteArithmetic(vmwriter.SUB)
+		case token.ASTERISK:
+			ce.vmwriter.WriteCall("Math.multiply", 2)
+		case token.SLASH:
+			ce.vmwriter.WriteCall("Math.divide", 2)
+		case token.AND:
+			ce.vmwriter.WriteArithmetic(vmwriter.AND)
+		case token.PIPE:
+			ce.vmwriter.WriteArithmetic(vmwriter.OR)
+		case token.LESS_THAN:
+			ce.vmwriter.WriteArithmetic(vmwriter.LT)
+		case token.GREATER_THAN:
+			ce.vmwriter.WriteArithmetic(vmwriter.GT)
+		case token.EQUAL:
+			ce.vmwriter.WriteArithmetic(vmwriter.EQ)
+		}
 	}
 
 	ce.indent--
@@ -359,7 +396,26 @@ func (ce *CompilationEngine) CompileTerm() {
 
 	constants := []token.TokenType{token.INT_CONST, token.STRING_CONST}
 	keywordConstants := []token.Keyword{token.TRUE, token.FALSE, token.NULL, token.THIS}
-	if slices.Contains(constants, ce.tokenizer.CurrentToken().Type) || slices.Contains(keywordConstants, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
+	if slices.Contains(constants, ce.tokenizer.CurrentToken().Type) {
+		switch ce.tokenizer.CurrentToken().Type {
+		case token.INT_CONST:
+			value, err := strconv.Atoi(ce.tokenizer.CurrentToken().Literal)
+			if err != nil {
+				panic("expected integer constant but got " + ce.tokenizer.CurrentToken().Literal)
+			}
+			ce.vmwriter.WritePush(vmwriter.CONSTANT, value)
+		// TODO: need to check
+		case token.STRING_CONST:
+			ce.vmwriter.WritePush(vmwriter.CONSTANT, len(ce.tokenizer.CurrentToken().Literal))
+			ce.vmwriter.WriteCall("String.new", 1)
+			for _, c := range ce.tokenizer.CurrentToken().Literal {
+				ce.vmwriter.WritePush(vmwriter.CONSTANT, int(c))
+				ce.vmwriter.WriteCall("String.appendChar", 2)
+			}
+		}
+		ce.print(ce.tokenizer.CurrentToken().Xml())
+		ce.tokenizer.Advance()
+	} else if slices.Contains(keywordConstants, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 	} else if ce.tokenizer.CurrentToken().Literal == "(" {

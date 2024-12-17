@@ -30,11 +30,17 @@ const (
 )
 
 type VMWriter struct {
-	Code string
+	className string
+	Code      string
+	hasIndent bool
 }
 
-func New() *VMWriter {
-	return &VMWriter{Code: ""}
+func New(n string) *VMWriter {
+	return &VMWriter{
+		className: n,
+		Code:      "",
+		hasIndent: false,
+	}
 }
 
 func (w *VMWriter) WritePush(segment segment, index int) {
@@ -50,7 +56,9 @@ func (w *VMWriter) WriteArithmetic(command command) {
 }
 
 func (w *VMWriter) WriteLabel(label string) {
+	w.hasIndent = false
 	w.write("label " + label)
+	w.hasIndent = true
 }
 
 func (w *VMWriter) WriteGoto(label string) {
@@ -66,7 +74,8 @@ func (w *VMWriter) WriteCall(name string, nArgs int) {
 }
 
 func (w *VMWriter) WriteFunction(name string, nLocals int) {
-	w.write("function " + name + " " + strconv.Itoa(nLocals))
+	w.write("function " + w.className + "." + name + " " + strconv.Itoa(nLocals))
+	w.hasIndent = true
 }
 
 func (w *VMWriter) WriteReturn() {
@@ -74,6 +83,8 @@ func (w *VMWriter) WriteReturn() {
 }
 
 func (w *VMWriter) write(str string) {
-	// MEMO: Maybe need indent
+	if w.hasIndent {
+		w.Code += "    "
+	}
 	w.Code += str + "\n"
 }

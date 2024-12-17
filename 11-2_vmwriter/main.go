@@ -18,6 +18,11 @@ func getVMPath(jackFilePath string) string {
 	return filepath.Join(dir, vmFileName)
 }
 
+func getClassName(jackFilePath string) string {
+	baseFile := filepath.Base(jackFilePath)
+	return strings.TrimSuffix(baseFile, ".jack")
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: go run main.go [filename.jack or directory]")
@@ -71,9 +76,10 @@ func main() {
 		}
 		defer vmFile.Close()
 
+		n := getClassName(jackFile)
 		t := tokenizer.New(string(content))
-		w := vmwriter.New()
-		ce := compilationengine.New(t, w)
+		w := vmwriter.New(n)
+		ce := compilationengine.New(n, t, w)
 		ce.CompileClass()
 		vmFile.WriteString(w.Code)
 	}
