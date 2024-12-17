@@ -65,6 +65,7 @@ const (
 	THIS        Keyword = "this"
 )
 
+// MEMO: Maybe this is not necessary
 var KeywordMap = map[string]Keyword{
 	"class":       CLASS,
 	"method":      METHOD,
@@ -112,20 +113,3 @@ const (
 	EQUAL                Symbol = "="
 	TILDE                Symbol = "~"
 )
-
-type VariableKind string
-
-const (
-	CLASS_STATIC VariableKind = "STATIC"
-	CLASS_FIELD  VariableKind = "FIELD"
-	ARGUMENT     VariableKind = "ARGUMENT"
-	VAR_LOCAL    VariableKind = "VAR"
-	NONE         VariableKind = "NONE"
-)
-
-var VariableKindMap = map[string]VariableKind{
-	"static":   CLASS_STATIC,
-	"field":    CLASS_FIELD,
-	"argument": ARGUMENT,
-	"var":      VAR_LOCAL,
-}

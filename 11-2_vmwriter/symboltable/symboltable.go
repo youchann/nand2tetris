@@ -1,11 +1,26 @@
 package symboltable
 
-import "github.com/youchann/nand2tetris/11-2_vmwriter/token"
+type kind string
+
+const (
+	STATIC    kind = "STATIC"
+	FIELD     kind = "FIELD"
+	ARGUMENT  kind = "ARGUMENT"
+	VAR_LOCAL kind = "VAR"
+	NONE      kind = "NONE"
+)
+
+var KindMap = map[string]kind{
+	"static":   STATIC,
+	"field":    FIELD,
+	"argument": ARGUMENT,
+	"var":      VAR_LOCAL,
+}
 
 type row struct {
 	name  string
 	Type  string // type is a reserved word in Go
-	kind  token.VariableKind
+	kind  kind
 	index int
 }
 
@@ -23,12 +38,12 @@ func (st *SymbolTable) Reset() {
 	st.table = map[string]row{}
 }
 
-func (st *SymbolTable) Define(name, Type string, kind token.VariableKind) {
+func (st *SymbolTable) Define(name, Type string, kind kind) {
 	index := st.VarCount(kind)
 	st.table[name] = row{name, Type, kind, index}
 }
 
-func (st *SymbolTable) VarCount(kind token.VariableKind) int {
+func (st *SymbolTable) VarCount(kind kind) int {
 	count := 0
 	for _, r := range st.table {
 		if r.kind == kind {
@@ -38,10 +53,10 @@ func (st *SymbolTable) VarCount(kind token.VariableKind) int {
 	return count
 }
 
-func (st *SymbolTable) KindOf(name string) token.VariableKind {
+func (st *SymbolTable) KindOf(name string) kind {
 	r, ok := st.table[name]
 	if !ok {
-		return token.NONE
+		return NONE
 	}
 	return r.kind
 }

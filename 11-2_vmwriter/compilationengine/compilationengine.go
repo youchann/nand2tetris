@@ -65,7 +65,7 @@ func (ce *CompilationEngine) CompileClassVarDec() {
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 				panic("expected identifier but got " + name)
 			}
-			ce.classST.Define(name, typ, token.VariableKindMap[kind])
+			ce.classST.Define(name, typ, symboltable.KindMap[kind])
 			ce.print("<identifier> " + "name: " + name + ", category: " + kind + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 			ce.tokenizer.Advance()
 			if ce.tokenizer.CurrentToken().Literal == "," {
@@ -128,7 +128,7 @@ func (ce *CompilationEngine) CompileParameterList() {
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected identifier but got " + name)
 		}
-		ce.subroutineST.Define(name, typ, token.ARGUMENT)
+		ce.subroutineST.Define(name, typ, symboltable.ARGUMENT)
 		ce.print("<identifier> " + "name: " + name + ", category: argument, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 		ce.tokenizer.Advance()
 
@@ -168,7 +168,7 @@ func (ce *CompilationEngine) CompileVarDec() {
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 				panic("expected identifier but got " + name)
 			}
-			ce.subroutineST.Define(name, typ, token.VAR_LOCAL)
+			ce.subroutineST.Define(name, typ, symboltable.VAR_LOCAL)
 			ce.print("<identifier> " + "name: " + name + ", category: var, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 			ce.tokenizer.Advance()
 
