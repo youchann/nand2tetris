@@ -6,4 +6,5 @@ use (
 	"./08"
 	"./10-1_tokenizer"
 	"./10-2_compilerengine"
+	"./11-1_symboltable"
 )
