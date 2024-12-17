@@ -42,7 +42,7 @@ func (t *JackTokenizer) Advance() {
 		for t.nextPosition < len(t.input) && (isLetter(t.input[t.nextPosition]) || isDigit(t.input[t.nextPosition])) {
 			t.nextPosition++
 		}
-		if _, exists := token.KeyWordMap[t.input[start:t.nextPosition]]; exists {
+		if _, exists := token.KeywordMap[t.input[start:t.nextPosition]]; exists {
 			t.currentToken = &token.Token{
 				Type:    token.KEYWORD,
 				Literal: t.input[start:t.nextPosition],

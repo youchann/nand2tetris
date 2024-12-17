@@ -65,7 +65,7 @@ const (
 	THIS        Keyword = "this"
 )
 
-var KeyWordMap = map[string]Keyword{
+var KeywordMap = map[string]Keyword{
 	"class":       CLASS,
 	"method":      METHOD,
 	"function":    FUNCTION,
