@@ -9,26 +9,26 @@ type row struct {
 	index int
 }
 
-type symbolTable struct {
+type SymbolTable struct {
 	table map[string]row
 }
 
-func New() *symbolTable {
-	return &symbolTable{
+func New() *SymbolTable {
+	return &SymbolTable{
 		table: map[string]row{},
 	}
 }
 
-func (st *symbolTable) Reset() {
+func (st *SymbolTable) Reset() {
 	st.table = map[string]row{}
 }
 
-func (st *symbolTable) Define(name, Type string, kind token.VariableKind) {
+func (st *SymbolTable) Define(name, Type string, kind token.VariableKind) {
 	index := st.VarCount(kind)
 	st.table[name] = row{name, Type, kind, index}
 }
 
-func (st *symbolTable) VarCount(kind token.VariableKind) int {
+func (st *SymbolTable) VarCount(kind token.VariableKind) int {
 	count := 0
 	for _, r := range st.table {
 		if r.kind == kind {
@@ -38,7 +38,7 @@ func (st *symbolTable) VarCount(kind token.VariableKind) int {
 	return count
 }
 
-func (st *symbolTable) KindOf(name string) token.VariableKind {
+func (st *SymbolTable) KindOf(name string) token.VariableKind {
 	r, ok := st.table[name]
 	if !ok {
 		return token.NONE
@@ -46,7 +46,7 @@ func (st *symbolTable) KindOf(name string) token.VariableKind {
 	return r.kind
 }
 
-func (st *symbolTable) TypeOf(name string) string {
+func (st *SymbolTable) TypeOf(name string) string {
 	r, ok := st.table[name]
 	if !ok {
 		return ""
@@ -54,7 +54,7 @@ func (st *symbolTable) TypeOf(name string) string {
 	return r.Type
 }
 
-func (st *symbolTable) IndexOf(name string) int {
+func (st *SymbolTable) IndexOf(name string) int {
 	r, ok := st.table[name]
 	if !ok {
 		return -1

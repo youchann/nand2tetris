@@ -122,3 +122,10 @@ const (
 	VAR_LOCAL    VariableKind = "VAR"
 	NONE         VariableKind = "NONE"
 )
+
+var VariableKindMap = map[string]VariableKind{
+	"static":   CLASS_STATIC,
+	"field":    CLASS_FIELD,
+	"argument": ARGUMENT,
+	"var":      VAR_LOCAL,
+}

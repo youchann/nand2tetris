@@ -2,22 +2,28 @@ package compilationengine
 
 import (
 	"slices"
+	"strconv"
 
+	"github.com/youchann/nand2tetris/11-1_symboltable/symboltable"
 	"github.com/youchann/nand2tetris/11-1_symboltable/token"
 	"github.com/youchann/nand2tetris/11-1_symboltable/tokenizer"
 )
 
 type CompilationEngine struct {
-	tokenizer *tokenizer.JackTokenizer
-	indent    int
-	XML       string
+	tokenizer    *tokenizer.JackTokenizer
+	indent       int
+	XML          string
+	classST      *symboltable.SymbolTable
+	subroutineST *symboltable.SymbolTable
 }
 
 func New(t *tokenizer.JackTokenizer) *CompilationEngine {
 	return &CompilationEngine{
-		tokenizer: t,
-		indent:    0,
-		XML:       "",
+		tokenizer:    t,
+		indent:       0,
+		XML:          "",
+		classST:      symboltable.New(),
+		subroutineST: symboltable.New(),
 	}
 }
 
@@ -49,16 +55,18 @@ func (ce *CompilationEngine) CompileClassVarDec() {
 		ce.indent++
 
 		// static or field
-		ce.process(ce.tokenizer.CurrentToken().Literal)
+		kind := ce.process(ce.tokenizer.CurrentToken().Literal)
 		// type
-		ce.processType()
+		typ := ce.processType()
 
 		// varName
 		for ce.tokenizer.CurrentToken().Literal != ";" {
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 			}
-			ce.print(ce.tokenizer.CurrentToken().Xml())
+			name := ce.tokenizer.CurrentToken().Literal
+			ce.classST.Define(name, typ, token.VariableKindMap[kind])
+			ce.print("<identifier> " + "name: " + name + ", category: " + kind + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 			ce.tokenizer.Advance()
 			if ce.tokenizer.CurrentToken().Literal == "," {
 				ce.process(",")
@@ -387,21 +395,24 @@ func (ce *CompilationEngine) CompileExpressionList() int {
 	return count
 }
 
-func (ce *CompilationEngine) process(str string) {
+func (ce *CompilationEngine) process(str string) string {
 	if ce.tokenizer.CurrentToken().Literal != str {
 		panic("expected " + str + " but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
+	return str
 }
 
-func (ce *CompilationEngine) processType() {
+func (ce *CompilationEngine) processType() string {
 	types := []token.Keyword{token.INT, token.CHAR, token.BOOLEAN}
-	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && !slices.Contains(types, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
+	t := ce.tokenizer.CurrentToken().Literal
+	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && !slices.Contains(types, token.Keyword(t)) {
 		panic("expected type but got " + ce.tokenizer.CurrentToken().Literal)
 	}
 	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
+	return t
 }
 
 func (ce *CompilationEngine) print(str string) {
