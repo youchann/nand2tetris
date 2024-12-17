@@ -8,13 +8,14 @@ import (
 
 	"github.com/youchann/nand2tetris/11-2_vmwriter/compilationengine"
 	"github.com/youchann/nand2tetris/11-2_vmwriter/tokenizer"
+	"github.com/youchann/nand2tetris/11-2_vmwriter/vmwriter"
 )
 
-func getXMLPath(jackFilePath string) string {
+func getVMPath(jackFilePath string) string {
 	dir := filepath.Dir(jackFilePath)
 	baseFile := filepath.Base(jackFilePath)
-	xmlFileName := strings.TrimSuffix(baseFile, ".jack") + "_.xml"
-	return filepath.Join(dir, xmlFileName)
+	vmFileName := strings.TrimSuffix(baseFile, ".jack") + ".vm"
+	return filepath.Join(dir, vmFileName)
 }
 
 func main() {
@@ -62,17 +63,18 @@ func main() {
 			os.Exit(1)
 		}
 
-		xmlPath := getXMLPath(jackFile)
-		xmlFile, err := os.Create(xmlPath)
+		vmPath := getVMPath(jackFile)
+		vmFile, err := os.Create(vmPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating file %s: %v\n", xmlPath, err)
+			fmt.Fprintf(os.Stderr, "Error creating file %s: %v\n", vmPath, err)
 			os.Exit(1)
 		}
-		defer xmlFile.Close()
+		defer vmFile.Close()
 
 		t := tokenizer.New(string(content))
-		ce := compilationengine.New(t)
+		w := vmwriter.New()
+		ce := compilationengine.New(t, w)
 		ce.CompileClass()
-		xmlFile.WriteString(ce.XML)
+		vmFile.WriteString(w.Code)
 	}
 }

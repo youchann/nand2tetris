@@ -7,19 +7,22 @@ import (
 	"github.com/youchann/nand2tetris/11-2_vmwriter/symboltable"
 	"github.com/youchann/nand2tetris/11-2_vmwriter/token"
 	"github.com/youchann/nand2tetris/11-2_vmwriter/tokenizer"
+	"github.com/youchann/nand2tetris/11-2_vmwriter/vmwriter"
 )
 
 type CompilationEngine struct {
 	tokenizer    *tokenizer.JackTokenizer
+	vmwriter     *vmwriter.VMWriter
 	indent       int
 	XML          string
 	classST      *symboltable.SymbolTable
 	subroutineST *symboltable.SymbolTable
 }
 
-func New(t *tokenizer.JackTokenizer) *CompilationEngine {
+func New(t *tokenizer.JackTokenizer, w *vmwriter.VMWriter) *CompilationEngine {
 	return &CompilationEngine{
 		tokenizer:    t,
+		vmwriter:     w,
 		indent:       0,
 		XML:          "",
 		classST:      symboltable.New(),
