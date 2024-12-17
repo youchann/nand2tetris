@@ -7,4 +7,5 @@ use (
 	"./10-1_tokenizer"
 	"./10-2_compilerengine"
 	"./11-1_symboltable"
+	"./11-2_vmwriter"
 )
