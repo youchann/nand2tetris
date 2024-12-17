@@ -61,10 +61,10 @@ func (ce *CompilationEngine) CompileClassVarDec() {
 
 		// varName
 		for ce.tokenizer.CurrentToken().Literal != ";" {
-			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
-			}
 			name := ce.tokenizer.CurrentToken().Literal
+			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
+				panic("expected identifier but got " + name)
+			}
 			ce.classST.Define(name, typ, token.VariableKindMap[kind])
 			ce.print("<identifier> " + "name: " + name + ", category: " + kind + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 			ce.tokenizer.Advance()
@@ -83,6 +83,7 @@ func (ce *CompilationEngine) CompileClassVarDec() {
 func (ce *CompilationEngine) CompileSubroutine() {
 	subroutineType := []token.Keyword{token.CONSTRUCTOR, token.FUNCTION, token.METHOD}
 	for slices.Contains(subroutineType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
+		ce.subroutineST.Reset()
 		ce.print("<subroutineDec>")
 		ce.indent++
 
@@ -120,13 +121,15 @@ func (ce *CompilationEngine) CompileParameterList() {
 
 	for ce.tokenizer.CurrentToken().Literal != ")" {
 		// type
-		ce.processType()
+		typ := ce.processType()
 
 		// varName
+		name := ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+			panic("expected identifier but got " + name)
 		}
-		ce.print(ce.tokenizer.CurrentToken().Xml())
+		ce.subroutineST.Define(name, typ, token.ARGUMENT)
+		ce.print("<identifier> " + "name: " + name + ", category: argument, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 		ce.tokenizer.Advance()
 
 		if ce.tokenizer.CurrentToken().Literal == "," {
@@ -157,14 +160,16 @@ func (ce *CompilationEngine) CompileVarDec() {
 		ce.indent++
 
 		ce.process("var")
-		ce.processType()
+		typ := ce.processType()
 
 		// varName
 		for ce.tokenizer.CurrentToken().Literal != ";" {
+			name := ce.tokenizer.CurrentToken().Literal
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+				panic("expected identifier but got " + name)
 			}
-			ce.print(ce.tokenizer.CurrentToken().Xml())
+			ce.subroutineST.Define(name, typ, token.VAR_LOCAL)
+			ce.print("<identifier> " + "name: " + name + ", category: var, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 			ce.tokenizer.Advance()
 
 			if ce.tokenizer.CurrentToken().Literal == "," {
@@ -210,10 +215,17 @@ func (ce *CompilationEngine) CompileLet() {
 	ce.process("let")
 
 	// varName
+	name := ce.tokenizer.CurrentToken().Literal
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+		panic("expected identifier but got " + name)
 	}
-	ce.print(ce.tokenizer.CurrentToken().Xml())
+	if ce.subroutineST.IndexOf(name) != -1 {
+		ce.print("<identifier> " + "name: " + name + ", category: var, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
+	} else if ce.classST.IndexOf(name) != -1 {
+		ce.print("<identifier> " + "name: " + name + ", category: class, index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
+	} else {
+		panic("undefined variable " + name)
+	}
 	ce.tokenizer.Advance()
 
 	if ce.tokenizer.CurrentToken().Literal == "[" {
@@ -275,17 +287,27 @@ func (ce *CompilationEngine) CompileDo() {
 	ce.process("do")
 
 	// subroutineCall
+	name := ce.tokenizer.CurrentToken().Literal
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+		panic("expected identifier but got " + name)
 	}
-	ce.print(ce.tokenizer.CurrentToken().Xml())
+	if ce.subroutineST.IndexOf(name) != -1 {
+		ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.subroutineST.KindOf(name)) + ", index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
+	} else if ce.classST.IndexOf(name) != -1 {
+		ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.classST.KindOf(name)) + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
+	} else {
+		ce.print("<identifier> " + "name: " + name + ", category: class, index: -1, usage: using" + " </identifier>")
+		// TODO: check VM API & class method
+		// panic("undefined subroutine " + name)
+	}
 	ce.tokenizer.Advance()
 	if ce.tokenizer.CurrentToken().Literal == "." {
 		ce.process(".")
+		name = ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+			panic("expected identifier but got " + name)
 		}
-		ce.print(ce.tokenizer.CurrentToken().Xml())
+		ce.print("<identifier> " + "name: " + name + ", category: subroutine, index: -1, usage: using" + " </identifier>")
 		ce.tokenizer.Advance()
 	}
 
@@ -345,10 +367,19 @@ func (ce *CompilationEngine) CompileTerm() {
 		ce.process(ce.tokenizer.CurrentToken().Literal)
 		ce.CompileTerm()
 	} else {
+		name := ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+			panic("expected identifier but got " + name)
 		}
-		ce.print(ce.tokenizer.CurrentToken().Xml())
+		if ce.subroutineST.IndexOf(name) != -1 {
+			ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.subroutineST.KindOf(name)) + ", index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
+		} else if ce.classST.IndexOf(name) != -1 {
+			ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.classST.KindOf(name)) + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
+		} else {
+			ce.print("<identifier> " + "name: " + name + ", category: class, index: -1, usage: using" + " </identifier>")
+			// TODO: check VM API & class method
+			// panic("undefined subroutine " + name)
+		}
 		ce.tokenizer.Advance()
 
 		if ce.tokenizer.CurrentToken().Literal == "[" {
@@ -357,12 +388,12 @@ func (ce *CompilationEngine) CompileTerm() {
 			ce.process("]")
 		} else if ce.tokenizer.CurrentToken().Literal == "." {
 			ce.process(".")
+			name = ce.tokenizer.CurrentToken().Literal
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
+				panic("expected identifier but got " + name)
 			}
-			ce.print(ce.tokenizer.CurrentToken().Xml())
+			ce.print("<identifier> " + "name: " + name + ", category: subroutine, index: -1, usage: using" + " </identifier>")
 			ce.tokenizer.Advance()
-
 			ce.process("(")
 			ce.CompileExpressionList()
 			ce.process(")")
