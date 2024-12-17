@@ -37,7 +37,7 @@ func (ce *CompilationEngine) CompileClass() {
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 		panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 	}
-	ce.print(ce.tokenizer.CurrentToken().Xml())
+	ce.print("<identifier> " + "name: " + ce.tokenizer.CurrentToken().Literal + ", category: class, index: -1, usage: definition" + " </identifier>")
 	ce.tokenizer.Advance()
 
 	ce.process("{")
@@ -101,7 +101,7 @@ func (ce *CompilationEngine) CompileSubroutine() {
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected identifier but got " + ce.tokenizer.CurrentToken().Literal)
 		}
-		ce.print(ce.tokenizer.CurrentToken().Xml())
+		ce.print("<identifier> " + "name: " + ce.tokenizer.CurrentToken().Literal + ", category: subroutine, index: -1, usage: definition" + " </identifier>")
 		ce.tokenizer.Advance()
 
 		ce.process("(")
