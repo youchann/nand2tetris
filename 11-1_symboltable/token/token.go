@@ -112,3 +112,13 @@ const (
 	EQUAL                Symbol = "="
 	TILDE                Symbol = "~"
 )
+
+type VariableKind string
+
+const (
+	CLASS_STATIC VariableKind = "STATIC"
+	CLASS_FIELD  VariableKind = "FIELD"
+	ARGUMENT     VariableKind = "ARGUMENT"
+	VAR_LOCAL    VariableKind = "VAR"
+	NONE         VariableKind = "NONE"
+)
