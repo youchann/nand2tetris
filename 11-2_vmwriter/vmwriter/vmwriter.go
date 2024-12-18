@@ -74,13 +74,13 @@ func (w *VMWriter) WriteCall(name string, nArgs int) {
 }
 
 func (w *VMWriter) WriteFunction(name string, nLocals int) {
+	w.hasIndent = false
 	w.write("function " + w.className + "." + name + " " + strconv.Itoa(nLocals))
 	w.hasIndent = true
 }
 
 func (w *VMWriter) WriteReturn() {
 	w.write("return")
-	w.hasIndent = false
 }
 
 func (w *VMWriter) write(str string) {
