@@ -99,8 +99,6 @@ func (ce *CompilationEngine) CompileSubroutine() {
 	subroutineType := []token.Keyword{token.CONSTRUCTOR, token.FUNCTION, token.METHOD}
 	for slices.Contains(subroutineType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		ce.subroutineST.Reset()
-		ce.print("<subroutineDec>")
-		ce.indent++
 
 		// constructor, function, or method
 		ce.process(ce.tokenizer.CurrentToken().Literal)
@@ -118,19 +116,17 @@ func (ce *CompilationEngine) CompileSubroutine() {
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected identifier but got " + name)
 		}
-		ce.print("<identifier> " + "name: " + name + ", category: subroutine, index: -1, usage: definition" + " </identifier>")
 		ce.tokenizer.Advance()
 
 		ce.process("(")
 		ce.CompileParameterList()
 		ce.process(")")
 
-		ce.vmwriter.WriteFunction(name, ce.subroutineST.VarCount(symboltable.ARGUMENT))
-
-		ce.CompileSubroutineBody()
-
-		ce.indent--
-		ce.print("</subroutineDec>")
+		ce.process("{")
+		n := ce.CompileVarDec()
+		ce.vmwriter.WriteFunction(name, n)
+		ce.CompileStatements()
+		ce.process("}")
 	}
 }
 
@@ -160,24 +156,9 @@ func (ce *CompilationEngine) CompileParameterList() {
 	ce.print("</parameterList>")
 }
 
-func (ce *CompilationEngine) CompileSubroutineBody() {
-	ce.print("<subroutineBody>")
-	ce.indent++
-
-	ce.process("{")
-	ce.CompileVarDec()
-	ce.CompileStatements()
-	ce.process("}")
-
-	ce.indent--
-	ce.print("</subroutineBody>")
-}
-
-func (ce *CompilationEngine) CompileVarDec() {
+func (ce *CompilationEngine) CompileVarDec() int {
+	count := 0
 	for ce.tokenizer.CurrentToken().Literal == "var" {
-		ce.print("<varDec>")
-		ce.indent++
-
 		ce.process("var")
 		typ := ce.processType()
 
@@ -188,7 +169,7 @@ func (ce *CompilationEngine) CompileVarDec() {
 				panic("expected identifier but got " + name)
 			}
 			ce.subroutineST.Define(name, typ, symboltable.VAR_LOCAL)
-			ce.print("<identifier> " + "name: " + name + ", category: var, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: definition" + " </identifier>")
+			count++
 			ce.tokenizer.Advance()
 
 			if ce.tokenizer.CurrentToken().Literal == "," {
@@ -197,10 +178,8 @@ func (ce *CompilationEngine) CompileVarDec() {
 		}
 
 		ce.process(";")
-
-		ce.indent--
-		ce.print("</varDec>")
 	}
+	return count
 }
 
 func (ce *CompilationEngine) CompileStatements() {
