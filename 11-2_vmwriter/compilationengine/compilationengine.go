@@ -10,6 +10,13 @@ import (
 	"github.com/youchann/nand2tetris/11-2_vmwriter/vmwriter"
 )
 
+var kindSegmentMap = map[symboltable.Kind]vmwriter.Segment{
+	symboltable.STATIC:    vmwriter.STATIC,
+	symboltable.FIELD:     vmwriter.THIS, // TODO: need to check
+	symboltable.ARGUMENT:  vmwriter.ARGUMENT,
+	symboltable.VAR_LOCAL: vmwriter.LOCAL,
+}
+
 type CompilationEngine struct {
 	tokenizer    *tokenizer.JackTokenizer
 	vmwriter     *vmwriter.VMWriter
@@ -250,6 +257,8 @@ func (ce *CompilationEngine) CompileLet() {
 	ce.CompileExpression()
 	ce.process(";")
 
+	ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+
 	ce.indent--
 	ce.print("</letStatement>")
 }
@@ -423,21 +432,18 @@ func (ce *CompilationEngine) CompileTerm() {
 		ce.CompileExpression()
 		ce.process(")")
 	} else if ce.tokenizer.CurrentToken().Literal == "-" || ce.tokenizer.CurrentToken().Literal == "~" {
-		ce.process(ce.tokenizer.CurrentToken().Literal)
+		op := ce.tokenizer.CurrentToken().Literal
+		ce.process(op)
 		ce.CompileTerm()
+		if op == "-" {
+			ce.vmwriter.WriteArithmetic(vmwriter.NEG)
+		} else {
+			ce.vmwriter.WriteArithmetic(vmwriter.NOT)
+		}
 	} else {
 		name := ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected identifier but got " + name)
-		}
-		if ce.subroutineST.IndexOf(name) != -1 {
-			ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.subroutineST.KindOf(name)) + ", index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
-		} else if ce.classST.IndexOf(name) != -1 {
-			ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.classST.KindOf(name)) + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
-		} else {
-			ce.print("<identifier> " + "name: " + name + ", category: class, index: -1, usage: using" + " </identifier>")
-			// TODO: check VM API & class method
-			// panic("undefined subroutine " + name)
 		}
 		ce.tokenizer.Advance()
 
@@ -447,19 +453,30 @@ func (ce *CompilationEngine) CompileTerm() {
 			ce.process("]")
 		} else if ce.tokenizer.CurrentToken().Literal == "." {
 			ce.process(".")
-			name = ce.tokenizer.CurrentToken().Literal
+			subroutineName := ce.tokenizer.CurrentToken().Literal
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				panic("expected identifier but got " + name)
+				panic("expected identifier but got " + subroutineName)
 			}
-			ce.print("<identifier> " + "name: " + name + ", category: subroutine, index: -1, usage: using" + " </identifier>")
+			ce.print("<identifier> " + "name: " + subroutineName + ", category: subroutine, index: -1, usage: using" + " </identifier>")
 			ce.tokenizer.Advance()
 			ce.process("(")
-			ce.CompileExpressionList()
+			n := ce.CompileExpressionList()
 			ce.process(")")
+			ce.vmwriter.WriteCall(name+"."+subroutineName, n)
 		} else if ce.tokenizer.CurrentToken().Literal == "(" {
 			ce.process("(")
 			ce.CompileExpressionList()
 			ce.process(")")
+		} else {
+			if ce.subroutineST.IndexOf(name) != -1 {
+				ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.subroutineST.KindOf(name)) + ", index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
+				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+			} else if ce.classST.IndexOf(name) != -1 {
+				ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.classST.KindOf(name)) + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
+				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+			} else {
+				panic("undefined variable " + name)
+			}
 		}
 	}
 

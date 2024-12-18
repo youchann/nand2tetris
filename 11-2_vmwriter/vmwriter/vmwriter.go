@@ -2,17 +2,17 @@ package vmwriter
 
 import "strconv"
 
-type segment string
+type Segment string
 
 const (
-	CONSTANT segment = "constant"
-	ARGUMENT segment = "argument"
-	LOCAL    segment = "local"
-	STATIC   segment = "static"
-	THIS     segment = "this"
-	THAT     segment = "that"
-	POINTER  segment = "pointer"
-	TEMP     segment = "temp"
+	CONSTANT Segment = "constant"
+	ARGUMENT Segment = "argument"
+	LOCAL    Segment = "local"
+	STATIC   Segment = "static"
+	THIS     Segment = "this"
+	THAT     Segment = "that"
+	POINTER  Segment = "pointer"
+	TEMP     Segment = "temp"
 )
 
 type command string
@@ -43,11 +43,11 @@ func New(n string) *VMWriter {
 	}
 }
 
-func (w *VMWriter) WritePush(segment segment, index int) {
+func (w *VMWriter) WritePush(segment Segment, index int) {
 	w.write("push " + string(segment) + " " + strconv.Itoa(index))
 }
 
-func (w *VMWriter) WritePop(segment segment, index int) {
+func (w *VMWriter) WritePop(segment Segment, index int) {
 	w.write("pop " + string(segment) + " " + strconv.Itoa(index))
 }
 
@@ -80,6 +80,7 @@ func (w *VMWriter) WriteFunction(name string, nLocals int) {
 
 func (w *VMWriter) WriteReturn() {
 	w.write("return")
+	w.hasIndent = false
 }
 
 func (w *VMWriter) write(str string) {
