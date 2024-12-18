@@ -113,6 +113,9 @@ func (ce *CompilationEngine) compileSubroutine() {
 			ce.vmwriter.WritePush(vmwriter.CONSTANT, ce.classST.VarCount(symboltable.FIELD))
 			ce.vmwriter.WriteCall("Memory.alloc", 1)
 			ce.vmwriter.WritePop(vmwriter.POINTER, 0)
+		} else if token.Keyword(methodType) == token.METHOD {
+			ce.vmwriter.WritePush(vmwriter.ARGUMENT, 0)
+			ce.vmwriter.WritePop(vmwriter.POINTER, 0)
 		}
 		ce.compileStatements()
 		ce.process("}")
