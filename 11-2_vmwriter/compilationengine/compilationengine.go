@@ -18,11 +18,9 @@ var kindSegmentMap = map[symboltable.Kind]vmwriter.Segment{
 }
 
 type CompilationEngine struct {
+	className    string
 	tokenizer    *tokenizer.JackTokenizer
 	vmwriter     *vmwriter.VMWriter
-	indent       int
-	XML          string
-	className    string
 	classST      *symboltable.SymbolTable
 	subroutineST *symboltable.SymbolTable
 }
@@ -31,8 +29,6 @@ func New(n string, t *tokenizer.JackTokenizer, w *vmwriter.VMWriter) *Compilatio
 	return &CompilationEngine{
 		tokenizer:    t,
 		vmwriter:     w,
-		indent:       0,
-		XML:          "",
 		className:    n,
 		classST:      symboltable.New(),
 		subroutineST: symboltable.New(),
@@ -40,9 +36,6 @@ func New(n string, t *tokenizer.JackTokenizer, w *vmwriter.VMWriter) *Compilatio
 }
 
 func (ce *CompilationEngine) CompileClass() {
-	ce.print("<class>")
-	ce.indent++
-
 	ce.process("class")
 
 	// className
@@ -52,23 +45,16 @@ func (ce *CompilationEngine) CompileClass() {
 	} else if name != ce.className {
 		panic("class name does not match file name")
 	}
-	ce.print("<identifier> " + "name: " + name + ", category: class, index: -1, usage: definition" + " </identifier>")
 	ce.tokenizer.Advance()
 
 	ce.process("{")
 	ce.compileClassVarDec()
 	ce.compileSubroutine()
 	ce.process("}")
-
-	ce.indent--
-	ce.print("</class>")
 }
 
 func (ce *CompilationEngine) compileClassVarDec() {
 	for ce.tokenizer.CurrentToken().Literal == "static" || ce.tokenizer.CurrentToken().Literal == "field" {
-		ce.print("<classVarDec>")
-		ce.indent++
-
 		// static or field
 		kind := ce.process(ce.tokenizer.CurrentToken().Literal)
 		// type
@@ -81,7 +67,6 @@ func (ce *CompilationEngine) compileClassVarDec() {
 				panic("expected identifier but got " + name)
 			}
 			ce.classST.Define(name, typ, symboltable.KindMap[kind])
-			ce.print("<identifier> " + "name: " + name + ", category: " + kind + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 			ce.tokenizer.Advance()
 			if ce.tokenizer.CurrentToken().Literal == "," {
 				ce.process(",")
@@ -89,9 +74,6 @@ func (ce *CompilationEngine) compileClassVarDec() {
 		}
 
 		ce.process(";")
-
-		ce.indent--
-		ce.print("</classVarDec>")
 	}
 }
 
@@ -108,7 +90,6 @@ func (ce *CompilationEngine) compileSubroutine() {
 		if !slices.Contains(voidOrType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) && ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected type or void but got " + ce.tokenizer.CurrentToken().Literal)
 		}
-		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 
 		// subroutineName
@@ -131,9 +112,6 @@ func (ce *CompilationEngine) compileSubroutine() {
 }
 
 func (ce *CompilationEngine) compileParameterList() {
-	ce.print("<parameterList>")
-	ce.indent++
-
 	for ce.tokenizer.CurrentToken().Literal != ")" {
 		// type
 		typ := ce.processType()
@@ -144,16 +122,12 @@ func (ce *CompilationEngine) compileParameterList() {
 			panic("expected identifier but got " + name)
 		}
 		ce.subroutineST.Define(name, typ, symboltable.ARGUMENT)
-		ce.print("<identifier> " + "name: " + name + ", category: argument, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: definition" + " </identifier>")
 		ce.tokenizer.Advance()
 
 		if ce.tokenizer.CurrentToken().Literal == "," {
 			ce.process(",")
 		}
 	}
-
-	ce.indent--
-	ce.print("</parameterList>")
 }
 
 func (ce *CompilationEngine) compileVarDec() int {
@@ -183,9 +157,6 @@ func (ce *CompilationEngine) compileVarDec() int {
 }
 
 func (ce *CompilationEngine) compileStatements() {
-	ce.print("<statements>")
-	ce.indent++
-
 	statementPrefix := []token.Keyword{token.LET, token.IF, token.WHILE, token.DO, token.RETURN}
 	for slices.Contains(statementPrefix, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		switch token.Keyword(ce.tokenizer.CurrentToken().Literal) {
@@ -201,28 +172,15 @@ func (ce *CompilationEngine) compileStatements() {
 			ce.compileReturn()
 		}
 	}
-
-	ce.indent--
-	ce.print("</statements>")
 }
 
 func (ce *CompilationEngine) compileLet() {
-	ce.print("<letStatement>")
-	ce.indent++
-
 	ce.process("let")
 
 	// varName
 	name := ce.tokenizer.CurrentToken().Literal
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 		panic("expected identifier but got " + name)
-	}
-	if ce.subroutineST.IndexOf(name) != -1 {
-		ce.print("<identifier> " + "name: " + name + ", category: var, index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
-	} else if ce.classST.IndexOf(name) != -1 {
-		ce.print("<identifier> " + "name: " + name + ", category: class, index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
-	} else {
-		panic("undefined variable " + name)
 	}
 	ce.tokenizer.Advance()
 
@@ -237,15 +195,9 @@ func (ce *CompilationEngine) compileLet() {
 	ce.process(";")
 
 	ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-
-	ce.indent--
-	ce.print("</letStatement>")
 }
 
 func (ce *CompilationEngine) compileIf() {
-	ce.print("<ifStatement>")
-	ce.indent++
-
 	ce.process("if")
 	ce.process("(")
 	ce.compileExpression()
@@ -259,15 +211,9 @@ func (ce *CompilationEngine) compileIf() {
 		ce.compileStatements()
 		ce.process("}")
 	}
-
-	ce.indent--
-	ce.print("</ifStatement>")
 }
 
 func (ce *CompilationEngine) compileWhile() {
-	ce.print("<whileStatement>")
-	ce.indent++
-
 	ce.process("while")
 	ce.process("(")
 	ce.compileExpression()
@@ -275,30 +221,15 @@ func (ce *CompilationEngine) compileWhile() {
 	ce.process("{")
 	ce.compileStatements()
 	ce.process("}")
-
-	ce.indent--
-	ce.print("</whileStatement>")
 }
 
 func (ce *CompilationEngine) compileDo() {
-	ce.print("<doStatement>")
-	ce.indent++
-
 	ce.process("do")
 
 	// subroutineCall
 	name := ce.tokenizer.CurrentToken().Literal
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 		panic("expected identifier but got " + name)
-	}
-	if ce.subroutineST.IndexOf(name) != -1 {
-		ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.subroutineST.KindOf(name)) + ", index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
-	} else if ce.classST.IndexOf(name) != -1 {
-		ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.classST.KindOf(name)) + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
-	} else {
-		ce.print("<identifier> " + "name: " + name + ", category: class, index: -1, usage: using" + " </identifier>")
-		// TODO: check VM API & class method
-		// panic("undefined subroutine " + name)
 	}
 	ce.tokenizer.Advance()
 	if ce.tokenizer.CurrentToken().Literal == "." {
@@ -307,7 +238,6 @@ func (ce *CompilationEngine) compileDo() {
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 			panic("expected identifier but got " + n)
 		}
-		ce.print("<identifier> " + "name: " + n + ", category: subroutine, index: -1, usage: using" + " </identifier>")
 		name += "." + n
 		ce.tokenizer.Advance()
 	}
@@ -319,15 +249,9 @@ func (ce *CompilationEngine) compileDo() {
 
 	ce.vmwriter.WriteCall(name, c)
 	ce.vmwriter.WritePop(vmwriter.TEMP, 0)
-
-	ce.indent--
-	ce.print("</doStatement>")
 }
 
 func (ce *CompilationEngine) compileReturn() {
-	ce.print("<returnStatement>")
-	ce.indent++
-
 	ce.process("return")
 	if ce.tokenizer.CurrentToken().Literal == ";" {
 		ce.vmwriter.WritePush(vmwriter.CONSTANT, 0)
@@ -336,15 +260,9 @@ func (ce *CompilationEngine) compileReturn() {
 	}
 	ce.vmwriter.WriteReturn()
 	ce.process(";")
-
-	ce.indent--
-	ce.print("</returnStatement>")
 }
 
 func (ce *CompilationEngine) compileExpression() {
-	ce.print("<expression>")
-	ce.indent++
-
 	ce.compileTerm()
 
 	operand := []token.Symbol{token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.AND, token.PIPE, token.LESS_THAN, token.GREATER_THAN, token.EQUAL}
@@ -373,15 +291,9 @@ func (ce *CompilationEngine) compileExpression() {
 			ce.vmwriter.WriteArithmetic(vmwriter.EQ)
 		}
 	}
-
-	ce.indent--
-	ce.print("</expression>")
 }
 
 func (ce *CompilationEngine) compileTerm() {
-	ce.print("<term>")
-	ce.indent++
-
 	constants := []token.TokenType{token.INT_CONST, token.STRING_CONST}
 	keywordConstants := []token.Keyword{token.TRUE, token.FALSE, token.NULL, token.THIS}
 	if slices.Contains(constants, ce.tokenizer.CurrentToken().Type) {
@@ -401,10 +313,8 @@ func (ce *CompilationEngine) compileTerm() {
 				ce.vmwriter.WriteCall("String.appendChar", 2)
 			}
 		}
-		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 	} else if slices.Contains(keywordConstants, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
-		ce.print(ce.tokenizer.CurrentToken().Xml())
 		ce.tokenizer.Advance()
 	} else if ce.tokenizer.CurrentToken().Literal == "(" {
 		ce.process("(")
@@ -436,7 +346,6 @@ func (ce *CompilationEngine) compileTerm() {
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 				panic("expected identifier but got " + subroutineName)
 			}
-			ce.print("<identifier> " + "name: " + subroutineName + ", category: subroutine, index: -1, usage: using" + " </identifier>")
 			ce.tokenizer.Advance()
 			ce.process("(")
 			n := ce.compileExpressionList()
@@ -448,25 +357,18 @@ func (ce *CompilationEngine) compileTerm() {
 			ce.process(")")
 		} else {
 			if ce.subroutineST.IndexOf(name) != -1 {
-				ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.subroutineST.KindOf(name)) + ", index: " + strconv.Itoa(ce.subroutineST.IndexOf(name)) + ", usage: using" + " </identifier>")
 				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
 			} else if ce.classST.IndexOf(name) != -1 {
-				ce.print("<identifier> " + "name: " + name + ", category: " + string(ce.classST.KindOf(name)) + ", index: " + strconv.Itoa(ce.classST.IndexOf(name)) + ", usage: using" + " </identifier>")
 				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
 			} else {
 				panic("undefined variable " + name)
 			}
 		}
 	}
-
-	ce.indent--
-	ce.print("</term>")
 }
 
 func (ce *CompilationEngine) compileExpressionList() int {
 	count := 0
-	ce.print("<expressionList>")
-	ce.indent++
 
 	for ce.tokenizer.CurrentToken().Literal != ")" {
 		ce.compileExpression()
@@ -475,9 +377,6 @@ func (ce *CompilationEngine) compileExpressionList() int {
 			ce.process(",")
 		}
 	}
-
-	ce.indent--
-	ce.print("</expressionList>")
 	return count
 }
 
@@ -485,7 +384,6 @@ func (ce *CompilationEngine) process(str string) string {
 	if ce.tokenizer.CurrentToken().Literal != str {
 		panic("expected " + str + " but got " + ce.tokenizer.CurrentToken().Literal)
 	}
-	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
 	return str
 }
@@ -496,15 +394,6 @@ func (ce *CompilationEngine) processType() string {
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER && !slices.Contains(types, token.Keyword(t)) {
 		panic("expected type but got " + ce.tokenizer.CurrentToken().Literal)
 	}
-	ce.print(ce.tokenizer.CurrentToken().Xml())
 	ce.tokenizer.Advance()
 	return t
-}
-
-func (ce *CompilationEngine) print(str string) {
-	indentation := ""
-	for i := 0; i < ce.indent; i++ {
-		indentation += "  "
-	}
-	ce.XML += indentation + str + "\n"
 }
