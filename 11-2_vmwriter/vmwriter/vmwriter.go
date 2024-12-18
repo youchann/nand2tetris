@@ -30,14 +30,12 @@ const (
 )
 
 type VMWriter struct {
-	className string
 	Code      string
 	hasIndent bool
 }
 
-func New(n string) *VMWriter {
+func New() *VMWriter {
 	return &VMWriter{
-		className: n,
 		Code:      "",
 		hasIndent: false,
 	}
@@ -75,7 +73,7 @@ func (w *VMWriter) WriteCall(name string, nArgs int) {
 
 func (w *VMWriter) WriteFunction(name string, nLocals int) {
 	w.hasIndent = false
-	w.write("function " + w.className + "." + name + " " + strconv.Itoa(nLocals))
+	w.write("function " + name + " " + strconv.Itoa(nLocals))
 	w.hasIndent = true
 }
 

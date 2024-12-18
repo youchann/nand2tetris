@@ -78,7 +78,7 @@ func main() {
 
 		n := getClassName(jackFile)
 		t := tokenizer.New(string(content))
-		w := vmwriter.New(n)
+		w := vmwriter.New()
 		ce := compilationengine.New(n, t, w)
 		ce.CompileClass()
 		vmFile.WriteString(w.Code)

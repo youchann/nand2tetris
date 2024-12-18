@@ -105,7 +105,7 @@ func (ce *CompilationEngine) compileSubroutine() {
 
 		ce.process("{")
 		n := ce.compileVarDec()
-		ce.vmwriter.WriteFunction(name, n)
+		ce.vmwriter.WriteFunction(ce.className+"."+name, n)
 		ce.compileStatements()
 		ce.process("}")
 	}
