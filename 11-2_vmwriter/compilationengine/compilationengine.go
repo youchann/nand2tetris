@@ -52,7 +52,7 @@ func (ce *CompilationEngine) CompileClass() {
 	ce.process("{")
 	ce.compileClassVarDec()
 	ce.compileSubroutine()
-	ce.process("}")
+	// ce.process("}")
 }
 
 func (ce *CompilationEngine) compileClassVarDec() {
@@ -428,6 +428,16 @@ func (ce *CompilationEngine) compileTerm() {
 			ce.vmwriter.WritePop(vmwriter.POINTER, 1)
 			ce.vmwriter.WritePush(vmwriter.THAT, 0)
 		} else if ce.tokenizer.CurrentToken().Literal == "." {
+			args := 0
+			if ce.subroutineST.IndexOf(name) != -1 {
+				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+				name = ce.subroutineST.TypeOf(name)
+				args++
+			} else if ce.classST.IndexOf(name) != -1 {
+				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+				name = ce.classST.TypeOf(name)
+				args++
+			}
 			ce.process(".")
 			subroutineName := ce.tokenizer.CurrentToken().Literal
 			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
@@ -435,9 +445,9 @@ func (ce *CompilationEngine) compileTerm() {
 			}
 			ce.tokenizer.Advance()
 			ce.process("(")
-			n := ce.compileExpressionList()
+			args += ce.compileExpressionList()
 			ce.process(")")
-			ce.vmwriter.WriteCall(name+"."+subroutineName, n)
+			ce.vmwriter.WriteCall(name+"."+subroutineName, args)
 		} else if ce.tokenizer.CurrentToken().Literal == "(" {
 			ce.process("(")
 			ce.compileExpressionList()
