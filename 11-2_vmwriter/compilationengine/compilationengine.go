@@ -85,7 +85,8 @@ func (ce *CompilationEngine) compileSubroutine() {
 		ce.subroutineST.Reset()
 
 		// constructor, function, or method
-		ce.process(ce.tokenizer.CurrentToken().Literal)
+		methodType := ce.tokenizer.CurrentToken().Literal
+		ce.process(methodType)
 
 		// void or type
 		voidOrType := []token.Keyword{token.VOID, token.INT, token.CHAR, token.BOOLEAN}
@@ -108,6 +109,11 @@ func (ce *CompilationEngine) compileSubroutine() {
 		ce.process("{")
 		n := ce.compileVarDec()
 		ce.vmwriter.WriteFunction(ce.className+"."+name, n)
+		if token.Keyword(methodType) == token.CONSTRUCTOR {
+			ce.vmwriter.WritePush(vmwriter.CONSTANT, ce.classST.VarCount(symboltable.FIELD))
+			ce.vmwriter.WriteCall("Memory.alloc", 1)
+			ce.vmwriter.WritePop(vmwriter.POINTER, 0)
+		}
 		ce.compileStatements()
 		ce.process("}")
 	}
@@ -196,7 +202,13 @@ func (ce *CompilationEngine) compileLet() {
 	ce.compileExpression()
 	ce.process(";")
 
-	ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+	if ce.subroutineST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+	} else if ce.classST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePop(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+	} else {
+		panic("undefined variable " + name)
+	}
 }
 
 func (ce *CompilationEngine) compileIf() {
