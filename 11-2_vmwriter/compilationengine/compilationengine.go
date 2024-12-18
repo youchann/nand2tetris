@@ -19,6 +19,7 @@ var kindSegmentMap = map[symboltable.Kind]vmwriter.Segment{
 
 type CompilationEngine struct {
 	className    string
+	labelCount   int
 	tokenizer    *tokenizer.JackTokenizer
 	vmwriter     *vmwriter.VMWriter
 	classST      *symboltable.SymbolTable
@@ -27,9 +28,10 @@ type CompilationEngine struct {
 
 func New(n string, t *tokenizer.JackTokenizer, w *vmwriter.VMWriter) *CompilationEngine {
 	return &CompilationEngine{
+		className:    n,
+		labelCount:   0,
 		tokenizer:    t,
 		vmwriter:     w,
-		className:    n,
 		classST:      symboltable.New(),
 		subroutineST: symboltable.New(),
 	}
@@ -198,19 +200,28 @@ func (ce *CompilationEngine) compileLet() {
 }
 
 func (ce *CompilationEngine) compileIf() {
+	firstLabelName := ce.className + "_" + strconv.Itoa(ce.labelCount)
+	secondLabelName := ce.className + "_" + strconv.Itoa(ce.labelCount+1)
+	ce.labelCount += 2
+
 	ce.process("if")
 	ce.process("(")
 	ce.compileExpression()
 	ce.process(")")
+	ce.vmwriter.WriteArithmetic(vmwriter.NOT)
+	ce.vmwriter.WriteIf(secondLabelName)
 	ce.process("{")
 	ce.compileStatements()
 	ce.process("}")
+	ce.vmwriter.WriteGoto(firstLabelName)
+	ce.vmwriter.WriteLabel(secondLabelName)
 	if ce.tokenizer.CurrentToken().Literal == "else" {
 		ce.process("else")
 		ce.process("{")
 		ce.compileStatements()
 		ce.process("}")
 	}
+	ce.vmwriter.WriteLabel(firstLabelName)
 }
 
 func (ce *CompilationEngine) compileWhile() {

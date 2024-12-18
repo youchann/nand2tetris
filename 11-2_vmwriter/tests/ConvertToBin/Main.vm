@@ -27,37 +27,52 @@ function Main.convert 3
     push constant 16
     gt
     not
+    not
+    if-goto Main_1
     push argument 0
     push local 0
     and
     push constant 0
     eq
     not
+    not
+    if-goto Main_3
     push constant 8000
     push local 1
     add
     push constant 1
     call Memory.poke 2
     pop temp 0
+    goto Main_2
+label Main_3
     push constant 8000
     push local 1
     add
     push constant 0
     call Memory.poke 2
     pop temp 0
+label Main_2
+    goto Main_0
+label Main_1
     pop local 2
+label Main_0
     push constant 0
     return
 function Main.nextMask 0
     push argument 0
     push constant 0
     eq
+    not
+    if-goto Main_5
     push constant 1
     return
+    goto Main_4
+label Main_5
     push argument 0
     push constant 2
     call Math.multiply 2
     return
+label Main_4
 function Main.fillMemory 0
     push argument 1
     push constant 0
