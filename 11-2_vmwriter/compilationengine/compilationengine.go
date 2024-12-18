@@ -12,7 +12,7 @@ import (
 
 var kindSegmentMap = map[symboltable.Kind]vmwriter.Segment{
 	symboltable.STATIC:    vmwriter.STATIC,
-	symboltable.FIELD:     vmwriter.THIS, // TODO: need to check
+	symboltable.FIELD:     vmwriter.THIS,
 	symboltable.ARGUMENT:  vmwriter.ARGUMENT,
 	symboltable.VAR_LOCAL: vmwriter.LOCAL,
 }
@@ -203,13 +203,7 @@ func (ce *CompilationEngine) compileLet() {
 		ce.process("[")
 		ce.compileExpression()
 		ce.process("]")
-		if ce.subroutineST.IndexOf(name) != -1 {
-			ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-		} else if ce.classST.IndexOf(name) != -1 {
-			ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
-		} else {
-			panic("undefined variable " + name)
-		}
+		ce.writePushVariable(name)
 		ce.vmwriter.WriteArithmetic(vmwriter.ADD)
 		ce.process("=")
 		ce.compileExpression()
@@ -222,14 +216,7 @@ func (ce *CompilationEngine) compileLet() {
 		ce.process("=")
 		ce.compileExpression()
 		ce.process(";")
-
-		if ce.subroutineST.IndexOf(name) != -1 {
-			ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-		} else if ce.classST.IndexOf(name) != -1 {
-			ce.vmwriter.WritePop(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
-		} else {
-			panic("undefined variable " + name)
-		}
+		ce.writePopVariable(name)
 	}
 }
 
@@ -372,7 +359,6 @@ func (ce *CompilationEngine) compileTerm() {
 				panic("expected integer constant but got " + ce.tokenizer.CurrentToken().Literal)
 			}
 			ce.vmwriter.WritePush(vmwriter.CONSTANT, value)
-		// TODO: need to check
 		case token.STRING_CONST:
 			ce.vmwriter.WritePush(vmwriter.CONSTANT, len(ce.tokenizer.CurrentToken().Literal))
 			ce.vmwriter.WriteCall("String.new", 1)
@@ -417,13 +403,7 @@ func (ce *CompilationEngine) compileTerm() {
 			ce.process("[")
 			ce.compileExpression()
 			ce.process("]")
-			if ce.subroutineST.IndexOf(name) != -1 {
-				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-			} else if ce.classST.IndexOf(name) != -1 {
-				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
-			} else {
-				panic("undefined variable " + name)
-			}
+			ce.writePushVariable(name)
 			ce.vmwriter.WriteArithmetic(vmwriter.ADD)
 			ce.vmwriter.WritePop(vmwriter.POINTER, 1)
 			ce.vmwriter.WritePush(vmwriter.THAT, 0)
@@ -453,13 +433,7 @@ func (ce *CompilationEngine) compileTerm() {
 			ce.compileExpressionList()
 			ce.process(")")
 		} else {
-			if ce.subroutineST.IndexOf(name) != -1 {
-				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-			} else if ce.classST.IndexOf(name) != -1 {
-				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
-			} else {
-				panic("undefined variable " + name)
-			}
+			ce.writePushVariable(name)
 		}
 	}
 }
@@ -493,4 +467,24 @@ func (ce *CompilationEngine) processType() string {
 	}
 	ce.tokenizer.Advance()
 	return t
+}
+
+func (ce *CompilationEngine) writePushVariable(name string) {
+	if ce.subroutineST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+	} else if ce.classST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+	} else {
+		panic("undefined variable " + name)
+	}
+}
+
+func (ce *CompilationEngine) writePopVariable(name string) {
+	if ce.subroutineST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+	} else if ce.classST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePop(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+	} else {
+		panic("undefined variable " + name)
+	}
 }
