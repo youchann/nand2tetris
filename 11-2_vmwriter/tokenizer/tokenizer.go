@@ -31,9 +31,10 @@ func (t *JackTokenizer) Advance() {
 	// skip whitespace
 	for t.nextPosition < len(t.input) && (t.input[t.nextPosition] == ' ' || t.input[t.nextPosition] == '\n' || t.input[t.nextPosition] == '\r' || t.input[t.nextPosition] == '\t') {
 		t.nextPosition++
-		if t.nextPosition == len(t.input) {
-			return
-		}
+	}
+
+	if t.nextPosition == len(t.input) {
+		return
 	}
 
 	// keyword or identifier

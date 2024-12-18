@@ -52,7 +52,7 @@ func (ce *CompilationEngine) CompileClass() {
 	ce.process("{")
 	ce.compileClassVarDec()
 	ce.compileSubroutine()
-	// ce.process("}")
+	ce.process("}")
 }
 
 func (ce *CompilationEngine) compileClassVarDec() {
