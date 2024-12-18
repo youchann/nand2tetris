@@ -349,92 +349,99 @@ func (ce *CompilationEngine) compileExpression() {
 }
 
 func (ce *CompilationEngine) compileTerm() {
-	constants := []token.TokenType{token.INT_CONST, token.STRING_CONST}
-	keywordConstants := []token.Keyword{token.TRUE, token.FALSE, token.NULL, token.THIS}
-	if slices.Contains(constants, ce.tokenizer.CurrentToken().Type) {
-		switch ce.tokenizer.CurrentToken().Type {
-		case token.INT_CONST:
-			value, err := strconv.Atoi(ce.tokenizer.CurrentToken().Literal)
-			if err != nil {
-				panic("expected integer constant but got " + ce.tokenizer.CurrentToken().Literal)
-			}
-			ce.vmwriter.WritePush(vmwriter.CONSTANT, value)
-		case token.STRING_CONST:
-			ce.vmwriter.WritePush(vmwriter.CONSTANT, len(ce.tokenizer.CurrentToken().Literal))
-			ce.vmwriter.WriteCall("String.new", 1)
-			for _, c := range ce.tokenizer.CurrentToken().Literal {
-				ce.vmwriter.WritePush(vmwriter.CONSTANT, int(c))
-				ce.vmwriter.WriteCall("String.appendChar", 2)
-			}
+	switch ce.tokenizer.CurrentToken().Type {
+	case token.INT_CONST:
+		value, err := strconv.Atoi(ce.tokenizer.CurrentToken().Literal)
+		if err != nil {
+			panic("expected integer constant but got " + ce.tokenizer.CurrentToken().Literal)
+		}
+		ce.vmwriter.WritePush(vmwriter.CONSTANT, value)
+		ce.tokenizer.Advance()
+		return
+	case token.STRING_CONST:
+		ce.vmwriter.WritePush(vmwriter.CONSTANT, len(ce.tokenizer.CurrentToken().Literal))
+		ce.vmwriter.WriteCall("String.new", 1)
+		for _, c := range ce.tokenizer.CurrentToken().Literal {
+			ce.vmwriter.WritePush(vmwriter.CONSTANT, int(c))
+			ce.vmwriter.WriteCall("String.appendChar", 2)
 		}
 		ce.tokenizer.Advance()
-	} else if slices.Contains(keywordConstants, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
-		switch token.Keyword(ce.tokenizer.CurrentToken().Literal) {
-		case token.TRUE:
-			ce.vmwriter.WritePush(vmwriter.CONSTANT, 1)
-			ce.vmwriter.WriteArithmetic(vmwriter.NEG)
-		case token.FALSE, token.NULL:
-			ce.vmwriter.WritePush(vmwriter.CONSTANT, 0)
-		case token.THIS:
-			ce.vmwriter.WritePush(vmwriter.POINTER, 0)
-		}
+		return
+	}
+
+	switch ce.tokenizer.CurrentToken().Literal {
+	case string(token.TRUE):
+		ce.vmwriter.WritePush(vmwriter.CONSTANT, 1)
+		ce.vmwriter.WriteArithmetic(vmwriter.NEG)
 		ce.tokenizer.Advance()
-	} else if ce.tokenizer.CurrentToken().Literal == "(" {
+		return
+	case string(token.FALSE), string(token.NULL):
+		ce.vmwriter.WritePush(vmwriter.CONSTANT, 0)
+		ce.tokenizer.Advance()
+		return
+	case string(token.THIS):
+		ce.vmwriter.WritePush(vmwriter.POINTER, 0)
+		ce.tokenizer.Advance()
+		return
+	case "(":
 		ce.process("(")
 		ce.compileExpression()
 		ce.process(")")
-	} else if ce.tokenizer.CurrentToken().Literal == "-" || ce.tokenizer.CurrentToken().Literal == "~" {
-		op := ce.tokenizer.CurrentToken().Literal
-		ce.process(op)
+		return
+	case "-":
+		ce.process("-")
 		ce.compileTerm()
-		if op == "-" {
-			ce.vmwriter.WriteArithmetic(vmwriter.NEG)
-		} else {
-			ce.vmwriter.WriteArithmetic(vmwriter.NOT)
+		ce.vmwriter.WriteArithmetic(vmwriter.NEG)
+		return
+	case "~":
+		ce.process("~")
+		ce.compileTerm()
+		ce.vmwriter.WriteArithmetic(vmwriter.NOT)
+		return
+	}
+
+	name := ce.tokenizer.CurrentToken().Literal
+	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
+		panic("expected identifier but got " + name)
+	}
+	ce.tokenizer.Advance()
+
+	switch ce.tokenizer.CurrentToken().Literal {
+	case "[":
+		ce.process("[")
+		ce.compileExpression()
+		ce.process("]")
+		ce.writePushVariable(name)
+		ce.vmwriter.WriteArithmetic(vmwriter.ADD)
+		ce.vmwriter.WritePop(vmwriter.POINTER, 1)
+		ce.vmwriter.WritePush(vmwriter.THAT, 0)
+	case "(":
+		ce.process("(")
+		ce.compileExpressionList()
+		ce.process(")")
+	case ".":
+		args := 0
+		if ce.subroutineST.IndexOf(name) != -1 {
+			ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+			name = ce.subroutineST.TypeOf(name)
+			args++
+		} else if ce.classST.IndexOf(name) != -1 {
+			ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+			name = ce.classST.TypeOf(name)
+			args++
 		}
-	} else {
-		name := ce.tokenizer.CurrentToken().Literal
+		ce.process(".")
+		subroutineName := ce.tokenizer.CurrentToken().Literal
 		if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-			panic("expected identifier but got " + name)
+			panic("expected identifier but got " + subroutineName)
 		}
 		ce.tokenizer.Advance()
-
-		if ce.tokenizer.CurrentToken().Literal == "[" {
-			ce.process("[")
-			ce.compileExpression()
-			ce.process("]")
-			ce.writePushVariable(name)
-			ce.vmwriter.WriteArithmetic(vmwriter.ADD)
-			ce.vmwriter.WritePop(vmwriter.POINTER, 1)
-			ce.vmwriter.WritePush(vmwriter.THAT, 0)
-		} else if ce.tokenizer.CurrentToken().Literal == "." {
-			args := 0
-			if ce.subroutineST.IndexOf(name) != -1 {
-				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-				name = ce.subroutineST.TypeOf(name)
-				args++
-			} else if ce.classST.IndexOf(name) != -1 {
-				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
-				name = ce.classST.TypeOf(name)
-				args++
-			}
-			ce.process(".")
-			subroutineName := ce.tokenizer.CurrentToken().Literal
-			if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
-				panic("expected identifier but got " + subroutineName)
-			}
-			ce.tokenizer.Advance()
-			ce.process("(")
-			args += ce.compileExpressionList()
-			ce.process(")")
-			ce.vmwriter.WriteCall(name+"."+subroutineName, args)
-		} else if ce.tokenizer.CurrentToken().Literal == "(" {
-			ce.process("(")
-			ce.compileExpressionList()
-			ce.process(")")
-		} else {
-			ce.writePushVariable(name)
-		}
+		ce.process("(")
+		args += ce.compileExpressionList()
+		ce.process(")")
+		ce.vmwriter.WriteCall(name+"."+subroutineName, args)
+	default:
+		ce.writePushVariable(name)
 	}
 }
 
