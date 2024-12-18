@@ -244,12 +244,22 @@ func (ce *CompilationEngine) compileWhile() {
 }
 
 func (ce *CompilationEngine) compileDo() {
+	args := 0
 	ce.process("do")
 
 	// subroutineCall
 	name := ce.tokenizer.CurrentToken().Literal
 	if ce.tokenizer.CurrentToken().Type != token.IDENTIFIER {
 		panic("expected identifier but got " + name)
+	}
+	if ce.subroutineST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+		name = ce.subroutineST.TypeOf(name)
+		args++
+	} else if ce.classST.IndexOf(name) != -1 {
+		ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+		name = ce.classST.TypeOf(name)
+		args++
 	}
 	ce.tokenizer.Advance()
 	if ce.tokenizer.CurrentToken().Literal == "." {
@@ -263,11 +273,11 @@ func (ce *CompilationEngine) compileDo() {
 	}
 
 	ce.process("(")
-	c := ce.compileExpressionList()
+	args += ce.compileExpressionList()
 	ce.process(")")
 	ce.process(";")
 
-	ce.vmwriter.WriteCall(name, c)
+	ce.vmwriter.WriteCall(name, args)
 	ce.vmwriter.WritePop(vmwriter.TEMP, 0)
 }
 
