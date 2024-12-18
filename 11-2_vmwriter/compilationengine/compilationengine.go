@@ -285,6 +285,10 @@ func (ce *CompilationEngine) compileDo() {
 		}
 		name += "." + n
 		ce.tokenizer.Advance()
+	} else {
+		name = ce.className + "." + name
+		ce.vmwriter.WritePush(vmwriter.POINTER, 0)
+		args++
 	}
 
 	ce.process("(")
