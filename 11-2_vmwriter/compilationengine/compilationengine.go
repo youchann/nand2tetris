@@ -335,6 +335,15 @@ func (ce *CompilationEngine) compileTerm() {
 		}
 		ce.tokenizer.Advance()
 	} else if slices.Contains(keywordConstants, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
+		switch token.Keyword(ce.tokenizer.CurrentToken().Literal) {
+		case token.TRUE:
+			ce.vmwriter.WritePush(vmwriter.CONSTANT, 1)
+			ce.vmwriter.WriteArithmetic(vmwriter.NEG)
+		case token.FALSE, token.NULL:
+			ce.vmwriter.WritePush(vmwriter.CONSTANT, 0)
+		case token.THIS:
+			ce.vmwriter.WritePush(vmwriter.POINTER, 0)
+		}
 		ce.tokenizer.Advance()
 	} else if ce.tokenizer.CurrentToken().Literal == "(" {
 		ce.process("(")
