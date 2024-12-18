@@ -102,6 +102,10 @@ func (ce *CompilationEngine) compileSubroutine() {
 		}
 		ce.tokenizer.Advance()
 
+		if token.Keyword(methodType) == token.METHOD {
+			ce.subroutineST.Define("this", ce.className, symboltable.ARGUMENT)
+		}
+
 		ce.process("(")
 		ce.compileParameterList()
 		ce.process(")")
