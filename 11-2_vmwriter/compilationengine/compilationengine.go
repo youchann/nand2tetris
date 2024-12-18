@@ -56,15 +56,15 @@ func (ce *CompilationEngine) CompileClass() {
 	ce.tokenizer.Advance()
 
 	ce.process("{")
-	ce.CompileClassVarDec()
-	ce.CompileSubroutine()
+	ce.compileClassVarDec()
+	ce.compileSubroutine()
 	ce.process("}")
 
 	ce.indent--
 	ce.print("</class>")
 }
 
-func (ce *CompilationEngine) CompileClassVarDec() {
+func (ce *CompilationEngine) compileClassVarDec() {
 	for ce.tokenizer.CurrentToken().Literal == "static" || ce.tokenizer.CurrentToken().Literal == "field" {
 		ce.print("<classVarDec>")
 		ce.indent++
@@ -95,7 +95,7 @@ func (ce *CompilationEngine) CompileClassVarDec() {
 	}
 }
 
-func (ce *CompilationEngine) CompileSubroutine() {
+func (ce *CompilationEngine) compileSubroutine() {
 	subroutineType := []token.Keyword{token.CONSTRUCTOR, token.FUNCTION, token.METHOD}
 	for slices.Contains(subroutineType, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		ce.subroutineST.Reset()
@@ -119,18 +119,18 @@ func (ce *CompilationEngine) CompileSubroutine() {
 		ce.tokenizer.Advance()
 
 		ce.process("(")
-		ce.CompileParameterList()
+		ce.compileParameterList()
 		ce.process(")")
 
 		ce.process("{")
-		n := ce.CompileVarDec()
+		n := ce.compileVarDec()
 		ce.vmwriter.WriteFunction(name, n)
-		ce.CompileStatements()
+		ce.compileStatements()
 		ce.process("}")
 	}
 }
 
-func (ce *CompilationEngine) CompileParameterList() {
+func (ce *CompilationEngine) compileParameterList() {
 	ce.print("<parameterList>")
 	ce.indent++
 
@@ -156,7 +156,7 @@ func (ce *CompilationEngine) CompileParameterList() {
 	ce.print("</parameterList>")
 }
 
-func (ce *CompilationEngine) CompileVarDec() int {
+func (ce *CompilationEngine) compileVarDec() int {
 	count := 0
 	for ce.tokenizer.CurrentToken().Literal == "var" {
 		ce.process("var")
@@ -182,7 +182,7 @@ func (ce *CompilationEngine) CompileVarDec() int {
 	return count
 }
 
-func (ce *CompilationEngine) CompileStatements() {
+func (ce *CompilationEngine) compileStatements() {
 	ce.print("<statements>")
 	ce.indent++
 
@@ -190,15 +190,15 @@ func (ce *CompilationEngine) CompileStatements() {
 	for slices.Contains(statementPrefix, token.Keyword(ce.tokenizer.CurrentToken().Literal)) {
 		switch token.Keyword(ce.tokenizer.CurrentToken().Literal) {
 		case token.LET:
-			ce.CompileLet()
+			ce.compileLet()
 		case token.IF:
-			ce.CompileIf()
+			ce.compileIf()
 		case token.WHILE:
-			ce.CompileWhile()
+			ce.compileWhile()
 		case token.DO:
-			ce.CompileDo()
+			ce.compileDo()
 		case token.RETURN:
-			ce.CompileReturn()
+			ce.compileReturn()
 		}
 	}
 
@@ -206,7 +206,7 @@ func (ce *CompilationEngine) CompileStatements() {
 	ce.print("</statements>")
 }
 
-func (ce *CompilationEngine) CompileLet() {
+func (ce *CompilationEngine) compileLet() {
 	ce.print("<letStatement>")
 	ce.indent++
 
@@ -228,12 +228,12 @@ func (ce *CompilationEngine) CompileLet() {
 
 	if ce.tokenizer.CurrentToken().Literal == "[" {
 		ce.process("[")
-		ce.CompileExpression()
+		ce.compileExpression()
 		ce.process("]")
 	}
 
 	ce.process("=")
-	ce.CompileExpression()
+	ce.compileExpression()
 	ce.process(";")
 
 	ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
@@ -242,21 +242,21 @@ func (ce *CompilationEngine) CompileLet() {
 	ce.print("</letStatement>")
 }
 
-func (ce *CompilationEngine) CompileIf() {
+func (ce *CompilationEngine) compileIf() {
 	ce.print("<ifStatement>")
 	ce.indent++
 
 	ce.process("if")
 	ce.process("(")
-	ce.CompileExpression()
+	ce.compileExpression()
 	ce.process(")")
 	ce.process("{")
-	ce.CompileStatements()
+	ce.compileStatements()
 	ce.process("}")
 	if ce.tokenizer.CurrentToken().Literal == "else" {
 		ce.process("else")
 		ce.process("{")
-		ce.CompileStatements()
+		ce.compileStatements()
 		ce.process("}")
 	}
 
@@ -264,23 +264,23 @@ func (ce *CompilationEngine) CompileIf() {
 	ce.print("</ifStatement>")
 }
 
-func (ce *CompilationEngine) CompileWhile() {
+func (ce *CompilationEngine) compileWhile() {
 	ce.print("<whileStatement>")
 	ce.indent++
 
 	ce.process("while")
 	ce.process("(")
-	ce.CompileExpression()
+	ce.compileExpression()
 	ce.process(")")
 	ce.process("{")
-	ce.CompileStatements()
+	ce.compileStatements()
 	ce.process("}")
 
 	ce.indent--
 	ce.print("</whileStatement>")
 }
 
-func (ce *CompilationEngine) CompileDo() {
+func (ce *CompilationEngine) compileDo() {
 	ce.print("<doStatement>")
 	ce.indent++
 
@@ -313,7 +313,7 @@ func (ce *CompilationEngine) CompileDo() {
 	}
 
 	ce.process("(")
-	c := ce.CompileExpressionList()
+	c := ce.compileExpressionList()
 	ce.process(")")
 	ce.process(";")
 
@@ -324,7 +324,7 @@ func (ce *CompilationEngine) CompileDo() {
 	ce.print("</doStatement>")
 }
 
-func (ce *CompilationEngine) CompileReturn() {
+func (ce *CompilationEngine) compileReturn() {
 	ce.print("<returnStatement>")
 	ce.indent++
 
@@ -332,7 +332,7 @@ func (ce *CompilationEngine) CompileReturn() {
 	if ce.tokenizer.CurrentToken().Literal == ";" {
 		ce.vmwriter.WritePush(vmwriter.CONSTANT, 0)
 	} else {
-		ce.CompileExpression()
+		ce.compileExpression()
 	}
 	ce.vmwriter.WriteReturn()
 	ce.process(";")
@@ -341,17 +341,17 @@ func (ce *CompilationEngine) CompileReturn() {
 	ce.print("</returnStatement>")
 }
 
-func (ce *CompilationEngine) CompileExpression() {
+func (ce *CompilationEngine) compileExpression() {
 	ce.print("<expression>")
 	ce.indent++
 
-	ce.CompileTerm()
+	ce.compileTerm()
 
 	operand := []token.Symbol{token.PLUS, token.MINUS, token.ASTERISK, token.SLASH, token.AND, token.PIPE, token.LESS_THAN, token.GREATER_THAN, token.EQUAL}
 	for slices.Contains(operand, token.Symbol(ce.tokenizer.CurrentToken().Literal)) {
 		op := ce.tokenizer.CurrentToken().Literal
 		ce.process(op)
-		ce.CompileTerm()
+		ce.compileTerm()
 		switch token.Symbol(op) {
 		case token.PLUS:
 			ce.vmwriter.WriteArithmetic(vmwriter.ADD)
@@ -378,7 +378,7 @@ func (ce *CompilationEngine) CompileExpression() {
 	ce.print("</expression>")
 }
 
-func (ce *CompilationEngine) CompileTerm() {
+func (ce *CompilationEngine) compileTerm() {
 	ce.print("<term>")
 	ce.indent++
 
@@ -408,12 +408,12 @@ func (ce *CompilationEngine) CompileTerm() {
 		ce.tokenizer.Advance()
 	} else if ce.tokenizer.CurrentToken().Literal == "(" {
 		ce.process("(")
-		ce.CompileExpression()
+		ce.compileExpression()
 		ce.process(")")
 	} else if ce.tokenizer.CurrentToken().Literal == "-" || ce.tokenizer.CurrentToken().Literal == "~" {
 		op := ce.tokenizer.CurrentToken().Literal
 		ce.process(op)
-		ce.CompileTerm()
+		ce.compileTerm()
 		if op == "-" {
 			ce.vmwriter.WriteArithmetic(vmwriter.NEG)
 		} else {
@@ -428,7 +428,7 @@ func (ce *CompilationEngine) CompileTerm() {
 
 		if ce.tokenizer.CurrentToken().Literal == "[" {
 			ce.process("[")
-			ce.CompileExpression()
+			ce.compileExpression()
 			ce.process("]")
 		} else if ce.tokenizer.CurrentToken().Literal == "." {
 			ce.process(".")
@@ -439,12 +439,12 @@ func (ce *CompilationEngine) CompileTerm() {
 			ce.print("<identifier> " + "name: " + subroutineName + ", category: subroutine, index: -1, usage: using" + " </identifier>")
 			ce.tokenizer.Advance()
 			ce.process("(")
-			n := ce.CompileExpressionList()
+			n := ce.compileExpressionList()
 			ce.process(")")
 			ce.vmwriter.WriteCall(name+"."+subroutineName, n)
 		} else if ce.tokenizer.CurrentToken().Literal == "(" {
 			ce.process("(")
-			ce.CompileExpressionList()
+			ce.compileExpressionList()
 			ce.process(")")
 		} else {
 			if ce.subroutineST.IndexOf(name) != -1 {
@@ -463,13 +463,13 @@ func (ce *CompilationEngine) CompileTerm() {
 	ce.print("</term>")
 }
 
-func (ce *CompilationEngine) CompileExpressionList() int {
+func (ce *CompilationEngine) compileExpressionList() int {
 	count := 0
 	ce.print("<expressionList>")
 	ce.indent++
 
 	for ce.tokenizer.CurrentToken().Literal != ")" {
-		ce.CompileExpression()
+		ce.compileExpression()
 		count++
 		if ce.tokenizer.CurrentToken().Literal == "," {
 			ce.process(",")
