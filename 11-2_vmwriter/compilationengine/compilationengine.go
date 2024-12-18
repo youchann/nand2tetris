@@ -225,12 +225,21 @@ func (ce *CompilationEngine) compileIf() {
 }
 
 func (ce *CompilationEngine) compileWhile() {
+	firstLabelName := ce.className + "_" + strconv.Itoa(ce.labelCount)
+	secondLabelName := ce.className + "_" + strconv.Itoa(ce.labelCount+1)
+	ce.labelCount += 2
+
 	ce.process("while")
 	ce.process("(")
+	ce.vmwriter.WriteLabel(firstLabelName)
 	ce.compileExpression()
+	ce.vmwriter.WriteArithmetic(vmwriter.NOT)
+	ce.vmwriter.WriteIf(secondLabelName)
 	ce.process(")")
 	ce.process("{")
 	ce.compileStatements()
+	ce.vmwriter.WriteGoto(firstLabelName)
+	ce.vmwriter.WriteLabel(secondLabelName)
 	ce.process("}")
 }
 
