@@ -199,18 +199,33 @@ func (ce *CompilationEngine) compileLet() {
 		ce.process("[")
 		ce.compileExpression()
 		ce.process("]")
-	}
-
-	ce.process("=")
-	ce.compileExpression()
-	ce.process(";")
-
-	if ce.subroutineST.IndexOf(name) != -1 {
-		ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
-	} else if ce.classST.IndexOf(name) != -1 {
-		ce.vmwriter.WritePop(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+		if ce.subroutineST.IndexOf(name) != -1 {
+			ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+		} else if ce.classST.IndexOf(name) != -1 {
+			ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+		} else {
+			panic("undefined variable " + name)
+		}
+		ce.vmwriter.WriteArithmetic(vmwriter.ADD)
+		ce.process("=")
+		ce.compileExpression()
+		ce.process(";")
+		ce.vmwriter.WritePop(vmwriter.TEMP, 0)
+		ce.vmwriter.WritePop(vmwriter.POINTER, 1)
+		ce.vmwriter.WritePush(vmwriter.TEMP, 0)
+		ce.vmwriter.WritePop(vmwriter.THAT, 0)
 	} else {
-		panic("undefined variable " + name)
+		ce.process("=")
+		ce.compileExpression()
+		ce.process(";")
+
+		if ce.subroutineST.IndexOf(name) != -1 {
+			ce.vmwriter.WritePop(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+		} else if ce.classST.IndexOf(name) != -1 {
+			ce.vmwriter.WritePop(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+		} else {
+			panic("undefined variable " + name)
+		}
 	}
 }
 
@@ -398,6 +413,16 @@ func (ce *CompilationEngine) compileTerm() {
 			ce.process("[")
 			ce.compileExpression()
 			ce.process("]")
+			if ce.subroutineST.IndexOf(name) != -1 {
+				ce.vmwriter.WritePush(kindSegmentMap[ce.subroutineST.KindOf(name)], ce.subroutineST.IndexOf(name))
+			} else if ce.classST.IndexOf(name) != -1 {
+				ce.vmwriter.WritePush(kindSegmentMap[ce.classST.KindOf(name)], ce.classST.IndexOf(name))
+			} else {
+				panic("undefined variable " + name)
+			}
+			ce.vmwriter.WriteArithmetic(vmwriter.ADD)
+			ce.vmwriter.WritePop(vmwriter.POINTER, 1)
+			ce.vmwriter.WritePush(vmwriter.THAT, 0)
 		} else if ce.tokenizer.CurrentToken().Literal == "." {
 			ce.process(".")
 			subroutineName := ce.tokenizer.CurrentToken().Literal
