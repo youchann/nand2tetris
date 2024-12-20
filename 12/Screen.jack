@@ -1,6 +1,3 @@
-// This file is part of www.nand2tetris.org
-// and the book "The Elements of Computing Systems"
-// by Nisan and Schocken, MIT Press.
 /**
  * A library of functions for displaying graphics on the screen.
  * The Hack physical screen consists of 512 rows (indexed 0..511, top to bottom)
@@ -11,10 +8,10 @@ class Screen {
     static boolean screenColor;
     static Array screenAddress;
     static Array bitArray;
-
     /** Initializes the Screen. */
     function void init() {
-        let screenAddress = 16384; // screen address is 16384-24575
+        // screen 16384 -- 24575
+        let screenAddress = 16384;
         let screenColor = true;
 
         let bitArray = Array.new(17);
@@ -42,10 +39,12 @@ class Screen {
     function void clearScreen() {
         var int i;
         let i = 0;
+
         while (i < 8192) {
             let screenAddress[i] = false;
             let i = i + 1;
         }
+
         return;
     }
 
@@ -58,8 +57,8 @@ class Screen {
 
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
-        let var address, mask;
-
+        var int address, mask;
+        
         let address = (y * 32) + (x / 16);
         let mask = bitArray[x & 15];
 
@@ -68,6 +67,7 @@ class Screen {
         } else {
             let screenAddress[address] = screenAddress[address] & ~mask;
         }
+        
         return;
     }
 
